@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane stylesheets="@../css/style.css" styleClass="app-bg" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.controller.MainController">
+
+    <left>
+        <VBox spacing="20" styleClass="sidebar" prefWidth="240">
+            <Label text="HALCÓN MUSIC" styleClass="logo-text"/>
+            <Button text="🏠 Inicio" styleClass="nav-btn"/>
+            <Button text="🔍 Buscar" styleClass="nav-btn"/>
+            <Button text="📚 Tu Biblioteca" styleClass="nav-btn"/>
+            <Separator styleClass="dark-separator"/>
+            <Label text="TUS PLAYLISTS" styleClass="section-title"/>
+        </VBox>
+    </left>
+
+    <center>
+        <VBox spacing="20" styleClass="main-content">
+            <Label text="¿Qué vibra buscas hoy?" styleClass="h1-title"/>
+
+            <HBox spacing="15">
+                <Button text="🔥 Energético" onAction="#moodEnergetico" styleClass="mood-pill"/>
+                <Button text="🧘 Relajado" onAction="#moodRelajado" styleClass="mood-pill"/>
+                <Button text="🎸 Belicón" onAction="#moodBelicon" styleClass="mood-pill"/>
+            </HBox>
+
+            <ScrollPane fitToWidth="true" styleClass="invisible-scroll">
+                <FlowPane fx:id="gridCanciones" hgap="25" vgap="25"/>
+            </ScrollPane>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" styleClass="player-bar" prefHeight="90">
+            <Label text="▶ Controles de Reproducción Aquí" textFill="#b3b3b3"/>
+        </HBox>
+    </bottom>
+</BorderPane>
