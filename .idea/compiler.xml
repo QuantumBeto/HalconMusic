@@ -9,5 +9,8 @@
         <module name="halconmusic" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="halconmusic" target="21" />
+    </bytecodeTargetLevel>
   </component>
 </project>
