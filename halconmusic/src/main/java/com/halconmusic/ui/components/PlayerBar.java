@@ -1,0 +1,251 @@
+package com.halconmusic.ui.components;
+
+import com.halconmusic.model.Cancion;
+import com.halconmusic.ui.UITheme;
+
+import javax.swing.*;
+import javax.swing.Timer;
+import java.awt.*;
+import java.awt.event.*;
+
+/**
+ * Barra de reproducción inferior (siempre visible).
+ * Simula la UI del reproductor tipo Spotify.
+ */
+public class PlayerBar extends JPanel {
+
+    private JLabel  lblTitle;
+    private JLabel  lblArtist;
+    private JButton btnPlay;
+    private JPanel  progFill;
+    private JLabel  lblCurrent;
+    private JLabel  lblTotal;
+
+    private boolean isPlaying   = false;
+    private int     duracionSeg = 0;
+    private int     progSeg     = 0;
+    private Timer   timer;
+
+    public PlayerBar() {
+        setPreferredSize(new Dimension(0, UITheme.PLAYER_H));
+        setBackground(UITheme.PLAYER);
+        setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UITheme.BORDER));
+        setLayout(new BorderLayout(0, 0));
+
+        add(buildTrackPanel(),    BorderLayout.WEST);
+        add(buildControlPanel(),  BorderLayout.CENTER);
+        add(buildExtrasPanel(),   BorderLayout.EAST);
+    }
+
+    // ── Track info (izquierda) ────────────────────────────
+    private JPanel buildTrackPanel() {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        p.setOpaque(false);
+        p.setPreferredSize(new Dimension(UITheme.SIDEBAR_W, UITheme.PLAYER_H));
+
+        // Thumbnail
+        JPanel thumb = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(UITheme.SURFACE);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 7, 7);
+                g2.setColor(UITheme.MUTED);
+                g2.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+                g2.drawString("♪", 10, 28);
+                g2.dispose();
+            }
+        };
+        thumb.setOpaque(false);
+        thumb.setPreferredSize(new Dimension(44, 44));
+
+        // Info
+        JPanel info = new JPanel(new GridLayout(2, 1, 0, 1));
+        info.setOpaque(false);
+        lblTitle  = makeLabel("Sin reproducción", UITheme.TEXT,  UITheme.FONT_BODY);
+        lblArtist = makeLabel("",                  UITheme.MUTED, UITheme.FONT_SMALL);
+        info.add(lblTitle);
+        info.add(lblArtist);
+
+        p.add(thumb);
+        p.add(info);
+        return p;
+    }
+
+    // ── Controls (centro) ─────────────────────────────────
+    private JPanel buildControlPanel() {
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+
+        // Botones
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        btns.setOpaque(false);
+
+        btns.add(ctrlBtn("⏮"));
+        btns.add(ctrlBtn("⏭"));
+
+        btnPlay = new JButton("▶") {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(isPlaying ? UITheme.ACCENT2 : UITheme.ACCENT);
+                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.setColor(UITheme.BG);
+                g2.setFont(getFont());
+                FontMetrics fm = g2.getFontMetrics();
+                String t = isPlaying ? "⏸" : "▶";
+                g2.drawString(t, (getWidth() - fm.stringWidth(t)) / 2 + 1,
+                              (getHeight() + fm.getAscent()) / 2 - 3);
+                g2.dispose();
+            }
+        };
+        btnPlay.setPreferredSize(new Dimension(34, 34));
+        btnPlay.setBorderPainted(false);
+        btnPlay.setContentAreaFilled(false);
+        btnPlay.setFocusPainted(false);
+        btnPlay.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnPlay.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnPlay.addActionListener(e -> togglePlay());
+        btns.add(btnPlay);
+
+        // Progress bar
+        lblCurrent = makeLabel("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
+        lblTotal   = makeLabel("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
+
+        JPanel progTrack = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(0xFF, 0xFF, 0xFF, 25));
+                g2.fillRoundRect(0, getHeight()/2 - 2, getWidth(), 3, 2, 2);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        progTrack.setOpaque(false);
+        progTrack.setPreferredSize(new Dimension(360, 12));
+
+        progFill = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(UITheme.ACCENT);
+                g2.fillRoundRect(0, getHeight()/2 - 2, getWidth(), 3, 2, 2);
+                g2.dispose();
+            }
+        };
+        progFill.setOpaque(false);
+        progTrack.add(progFill, BorderLayout.WEST);
+        progFill.setPreferredSize(new Dimension(0, 12));
+
+        JPanel progRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
+        progRow.setOpaque(false);
+        progRow.add(lblCurrent);
+        progRow.add(progTrack);
+        progRow.add(lblTotal);
+
+        p.add(Box.createVerticalGlue());
+        p.add(btns);
+        p.add(Box.createVerticalStrut(4));
+        p.add(progRow);
+        p.add(Box.createVerticalGlue());
+
+        return p;
+    }
+
+    // ── Extras (derecha) ──────────────────────────────────
+    private JPanel buildExtrasPanel() {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        p.setOpaque(false);
+        p.setPreferredSize(new Dimension(180, UITheme.PLAYER_H));
+
+        JLabel volIcon = makeLabel("🔊", UITheme.MUTED, UITheme.FONT_SMALL);
+        JPanel volTrack = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setColor(new Color(0xFF,0xFF,0xFF,25));
+                g2.fillRoundRect(0, getHeight()/2 - 1, getWidth(), 3, 2, 2);
+                g2.setColor(new Color(0xFF,0xFF,0xFF,76));
+                g2.fillRoundRect(0, getHeight()/2 - 1, (int)(getWidth()*0.65), 3, 2, 2);
+                g2.dispose();
+            }
+        };
+        volTrack.setOpaque(false);
+        volTrack.setPreferredSize(new Dimension(70, 12));
+
+        p.add(volIcon);
+        p.add(volTrack);
+        return p;
+    }
+
+    // ── API pública ───────────────────────────────────────
+    public void reproducir(Cancion c) {
+        lblTitle.setText(c.getNombre());
+        lblArtist.setText(c.getNombreArtistasCompleto());
+        duracionSeg = c.getDuracionSeg();
+        progSeg     = 0;
+        lblTotal.setText(c.getDuracionFormateada());
+        isPlaying   = true;
+        actualizarProgreso();
+        startTimer();
+        btnPlay.repaint();
+    }
+
+    private void togglePlay() {
+        isPlaying = !isPlaying;
+        if (isPlaying) startTimer();
+        else if (timer != null) timer.stop();
+        btnPlay.repaint();
+    }
+
+    private void startTimer() {
+        if (timer != null) timer.stop();
+        timer = new Timer(1000, e -> {
+            if (progSeg < duracionSeg) {
+                progSeg++;
+                actualizarProgreso();
+            } else {
+                timer.stop();
+                isPlaying = false;
+                btnPlay.repaint();
+            }
+        });
+        timer.start();
+    }
+
+    private void actualizarProgreso() {
+        int min = progSeg / 60;
+        int seg = progSeg % 60;
+        lblCurrent.setText(String.format("%d:%02d", min, seg));
+        if (duracionSeg > 0) {
+            double pct = (double) progSeg / duracionSeg;
+            int w = (int)(360 * pct);
+            progFill.setPreferredSize(new Dimension(w, 12));
+            progFill.getParent().revalidate();
+        }
+    }
+
+    private JButton ctrlBtn(String text) {
+        JButton b = new JButton(text);
+        b.setForeground(UITheme.MUTED);
+        b.setFont(UITheme.FONT_BODY);
+        b.setBorderPainted(false);
+        b.setContentAreaFilled(false);
+        b.setFocusPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { b.setForeground(UITheme.TEXT); }
+            @Override public void mouseExited (MouseEvent e) { b.setForeground(UITheme.MUTED); }
+        });
+        return b;
+    }
+
+    private JLabel makeLabel(String text, Color color, Font font) {
+        JLabel l = new JLabel(text);
+        l.setForeground(color);
+        l.setFont(font);
+        return l;
+    }
+}
