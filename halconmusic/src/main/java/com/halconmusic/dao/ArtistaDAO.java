@@ -27,62 +27,60 @@ public class ArtistaDAO {
         this.con = ConexionDB.getInstance().getConexion();
     }
 
-    /**
-     * Obtiene todos los artistas con el total de canciones por artista.
-     * SQL: JOIN + COUNT + GROUP BY
-     */
     public List<Artista> obtenerTodos() {
         List<Artista> lista = new ArrayList<>();
 
+        // ✅ Sin PORTADA en el SELECT principal — se obtiene aparte
         String sql = """
             SELECT A.ID_ARTISTA,
-                   A.NOMBRE,
-                   A.PORTADA,
-                   A.DESCRIPCION,
-                   A.GENEROPRINCIPAL,
-                   A.PAISDEORIGEN,
-                   COUNT(AC.ID_CANCION) AS TOTAL_CANCIONES
+                A.NOMBRE,
+                A.DESCRIPCION,
+                A.GENEROPRINCIPAL,
+                A.PAISDEORIGEN,
+                COUNT(AC.ID_CANCION) AS TOTAL_CANCIONES
             FROM ARTISTAS A
             LEFT JOIN ARTISTAS_CANCIONES AC ON A.ID_ARTISTA = AC.ID_ARTISTA
-            GROUP BY A.ID_ARTISTA, A.NOMBRE, A.PORTADA,
-                     A.DESCRIPCION, A.GENEROPRINCIPAL, A.PAISDEORIGEN
+            GROUP BY A.ID_ARTISTA, A.NOMBRE, A.DESCRIPCION,
+                A.GENEROPRINCIPAL, A.PAISDEORIGEN
             ORDER BY UPPER(A.NOMBRE)
             """;
 
         try (PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
+            ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                lista.add(mapearArtista(rs));
+                // Obtiene el BLOB en query separado por ID
+                Image portada = obtenerPortada(rs.getString("ID_ARTISTA"));
+                lista.add(new Artista(
+                    rs.getString("ID_ARTISTA"),
+                    rs.getString("NOMBRE"),
+                    portada,
+                    rs.getString("DESCRIPCION"),
+                    rs.getString("GENEROPRINCIPAL"),
+                    rs.getString("PAISDEORIGEN"),
+                    rs.getInt("TOTAL_CANCIONES")
+                ));
             }
-
         } catch (SQLException e) {
             System.err.println("Error en ArtistaDAO.obtenerTodos: " + e.getMessage());
         }
-
         return lista;
     }
 
-    /**
-     * Busca artistas por nombre (case-insensitive).
-     * SQL: UPPER + LIKE
-     */
     public List<Artista> buscarPorNombre(String termino) {
         List<Artista> lista = new ArrayList<>();
 
         String sql = """
             SELECT A.ID_ARTISTA,
-                   A.NOMBRE,
-                   A.PORTADA,
-                   A.DESCRIPCION,
-                   A.GENEROPRINCIPAL,
-                   A.PAISDEORIGEN,
-                   COUNT(AC.ID_CANCION) AS TOTAL_CANCIONES
+                A.NOMBRE,
+                A.DESCRIPCION,
+                A.GENEROPRINCIPAL,
+                A.PAISDEORIGEN,
+                COUNT(AC.ID_CANCION) AS TOTAL_CANCIONES
             FROM ARTISTAS A
             LEFT JOIN ARTISTAS_CANCIONES AC ON A.ID_ARTISTA = AC.ID_ARTISTA
             WHERE UPPER(A.NOMBRE) LIKE UPPER(?)
-            GROUP BY A.ID_ARTISTA, A.NOMBRE, A.PORTADA,
-                     A.DESCRIPCION, A.GENEROPRINCIPAL, A.PAISDEORIGEN
+            GROUP BY A.ID_ARTISTA, A.NOMBRE, A.DESCRIPCION,
+                A.GENEROPRINCIPAL, A.PAISDEORIGEN
             ORDER BY UPPER(A.NOMBRE)
             """;
 
@@ -90,15 +88,42 @@ public class ArtistaDAO {
             ps.setString(1, "%" + termino + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    lista.add(mapearArtista(rs));
+                    Image portada = obtenerPortada(rs.getString("ID_ARTISTA"));
+                    lista.add(new Artista(
+                        rs.getString("ID_ARTISTA"),
+                        rs.getString("NOMBRE"),
+                        portada,
+                        rs.getString("DESCRIPCION"),
+                        rs.getString("GENEROPRINCIPAL"),
+                        rs.getString("PAISDEORIGEN"),
+                        rs.getInt("TOTAL_CANCIONES")
+                    ));
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error en ArtistaDAO.buscarPorNombre: " + e.getMessage());
         }
-
         return lista;
     }
+
+// ✅ Método auxiliar — obtiene solo el BLOB por ID
+private Image obtenerPortada(String idArtista) {
+    String sql = "SELECT PORTADA FROM ARTISTAS WHERE ID_ARTISTA = ?";
+    try (PreparedStatement ps = con.prepareStatement(sql)) {
+        ps.setString(1, idArtista);
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                Blob blob = rs.getBlob("PORTADA");
+                if (blob != null) {
+                    return ImageIO.read(blob.getBinaryStream());
+                }
+            }
+        }
+    } catch (Exception e) {
+        // Retorna null — la UI mostrará placeholder
+    }
+    return null;
+}
 
     /**
      * Obtiene el conteo de géneros únicos entre todos los artistas.
