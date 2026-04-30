@@ -1,12 +1,33 @@
 package com.halconmusic.ui.components;
 
-import com.halconmusic.model.Cancion;
-import com.halconmusic.ui.UITheme;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import java.awt.*;
-import java.awt.event.*;
+
+import com.halconmusic.model.Cancion;
+import com.halconmusic.ui.AudioService;
+import com.halconmusic.ui.UITheme;
 
 /**
  * Barra de reproducción inferior (siempre visible).
@@ -82,7 +103,6 @@ public class PlayerBar extends JPanel {
         // Botones
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         btns.setOpaque(false);
-
         btns.add(ctrlBtn("⏮"));
         btns.add(ctrlBtn("⏭"));
 
@@ -110,36 +130,89 @@ public class PlayerBar extends JPanel {
         btnPlay.addActionListener(e -> togglePlay());
         btns.add(btnPlay);
 
-        // Progress bar
+        // Labels de tiempo
         lblCurrent = makeLabel("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
         lblTotal   = makeLabel("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
 
+        // ── Barra de progreso deslizable ──────────────────────
         JPanel progTrack = new JPanel(new BorderLayout()) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // Fondo gris
                 g2.setColor(new Color(0xFF, 0xFF, 0xFF, 25));
-                g2.fillRoundRect(0, getHeight()/2 - 2, getWidth(), 3, 2, 2);
+                g2.fillRoundRect(0, getHeight()/2 - 3, getWidth(), 6, 3, 3);
+                // Progreso dorado
+                if (duracionSeg > 0) {
+                    int w = (int)((double) progSeg / duracionSeg * getWidth());
+                    g2.setColor(UITheme.ACCENT);
+                    g2.fillRoundRect(0, getHeight()/2 - 3, w, 6, 3, 3);
+                    // Bolita indicadora
+                    g2.setColor(UITheme.ACCENT2);
+                    g2.fillOval(w - 6, getHeight()/2 - 6, 12, 12);
+                }
                 g2.dispose();
-                super.paintComponent(g);
             }
         };
         progTrack.setOpaque(false);
-        progTrack.setPreferredSize(new Dimension(360, 12));
+        progTrack.setPreferredSize(new Dimension(360, 18));
+        progTrack.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        progFill = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(UITheme.ACCENT);
-                g2.fillRoundRect(0, getHeight()/2 - 2, getWidth(), 3, 2, 2);
-                g2.dispose();
+        // ── Listeners para clic y arrastre ───────────────────
+        MouseAdapter seekListener = new MouseAdapter() {
+
+            // Calcula la posición en segundos según el clic en la barra
+            private void seek(MouseEvent e) {
+                if (duracionSeg <= 0) return;
+
+                double pct     = (double) e.getX() / progTrack.getWidth();
+                pct            = Math.max(0, Math.min(1, pct)); // clamp entre 0 y 1
+                int nuevosSeg  = (int)(pct * duracionSeg);
+
+                // Actualiza la UI
+                progSeg = nuevosSeg;
+                actualizarProgreso();
+
+                // Salta al momento exacto en el audio
+                AudioService.getInstance().buscarPosicion(nuevosSeg);
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e)  { seek(e); }
+
+            @Override
+            public void mouseDragged(MouseEvent e)  {
+                seek(e);
+                // Mientras arrastra muestra el tiempo en tiempo real
+                if (duracionSeg > 0) {
+                    double pct = (double) e.getX() / progTrack.getWidth();
+                    pct = Math.max(0, Math.min(1, pct));
+                    int seg = (int)(pct * duracionSeg);
+                    int min = seg / 60;
+                    int s   = seg % 60;
+                    lblCurrent.setText(String.format("%d:%02d", min, s));
+                }
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                // Agranda la barra al pasar el mouse (efecto hover)
+                progTrack.setPreferredSize(new Dimension(360, 22));
+                progTrack.getParent().revalidate();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                // Regresa al tamaño normal
+                progTrack.setPreferredSize(new Dimension(360, 18));
+                progTrack.getParent().revalidate();
             }
         };
-        progFill.setOpaque(false);
-        progTrack.add(progFill, BorderLayout.WEST);
-        progFill.setPreferredSize(new Dimension(0, 12));
 
+        progTrack.addMouseListener(seekListener);
+        progTrack.addMouseMotionListener(seekListener);
+
+        // ── Fila de controles ────────────────────────────────
         JPanel progRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
         progRow.setOpaque(false);
         progRow.add(lblCurrent);
@@ -162,21 +235,24 @@ public class PlayerBar extends JPanel {
         p.setPreferredSize(new Dimension(180, UITheme.PLAYER_H));
 
         JLabel volIcon = makeLabel("🔊", UITheme.MUTED, UITheme.FONT_SMALL);
-        JPanel volTrack = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setColor(new Color(0xFF,0xFF,0xFF,25));
-                g2.fillRoundRect(0, getHeight()/2 - 1, getWidth(), 3, 2, 2);
-                g2.setColor(new Color(0xFF,0xFF,0xFF,76));
-                g2.fillRoundRect(0, getHeight()/2 - 1, (int)(getWidth()*0.65), 3, 2, 2);
-                g2.dispose();
-            }
-        };
-        volTrack.setOpaque(false);
-        volTrack.setPreferredSize(new Dimension(70, 12));
+
+        // Slider de volumen interactivo
+        JSlider volSlider = new JSlider(0, 100, 65);
+        volSlider.setOpaque(false);
+        volSlider.setPreferredSize(new Dimension(80, 20));
+        volSlider.setForeground(UITheme.ACCENT);
+        volSlider.setPaintTrack(true);
+        volSlider.setPaintTicks(false);
+        volSlider.setPaintLabels(false);
+
+        volSlider.addChangeListener(e -> {
+            double volumen = volSlider.getValue() / 100.0;
+            AudioService.getInstance().setVolumen(volumen);
+            volIcon.setText(volumen == 0 ? "🔇" : volumen < 0.5 ? "🔉" : "🔊");
+        });
 
         p.add(volIcon);
-        p.add(volTrack);
+        p.add(volSlider);
         return p;
     }
 
@@ -188,15 +264,41 @@ public class PlayerBar extends JPanel {
         progSeg     = 0;
         lblTotal.setText(c.getDuracionFormateada());
         isPlaying   = true;
+        if (timer != null) timer.stop();
         actualizarProgreso();
-        startTimer();
         btnPlay.repaint();
+
+        // ✅ Reproduce con pausa real
+        AudioService.getInstance().reproducir(
+            c.getIdCancion(),
+            // Al terminar
+            () -> SwingUtilities.invokeLater(() -> {
+                isPlaying = false;
+                progSeg   = 0;
+                actualizarProgreso();
+                btnPlay.repaint();
+            }),
+            // Al progresar — actualiza la barra en tiempo real
+            (segundosActuales) -> SwingUtilities.invokeLater(() -> {
+                progSeg = (int) Math.floor(segundosActuales);
+                actualizarProgreso();
+            })
+        );
     }
 
     private void togglePlay() {
-        isPlaying = !isPlaying;
-        if (isPlaying) startTimer();
-        else if (timer != null) timer.stop();
+        AudioService audio = AudioService.getInstance();
+
+        if (isPlaying) {
+            // Pausar
+            audio.pausar();
+            if (timer != null) timer.stop();
+            isPlaying = false;
+        } else {
+            // Reanudar
+            audio.reanudar();
+            isPlaying = true;
+        }
         btnPlay.repaint();
     }
 
@@ -216,15 +318,17 @@ public class PlayerBar extends JPanel {
     }
 
     private void actualizarProgreso() {
-        int min = progSeg / 60;
-        int seg = progSeg % 60;
-        lblCurrent.setText(String.format("%d:%02d", min, seg));
         if (duracionSeg > 0) {
-            double pct = (double) progSeg / duracionSeg;
-            int w = (int)(360 * pct);
-            progFill.setPreferredSize(new Dimension(w, 12));
-            progFill.getParent().revalidate();
+            int min = progSeg / 60;
+            int seg = progSeg % 60;
+            lblCurrent.setText(String.format("%d:%02d", min, seg));
         }
+        // ✅ Repinta la barra directamente en lugar de cambiar el tamaño de progFill
+        SwingUtilities.invokeLater(() -> {
+        // Busca progTrack y lo repinta
+            Container parent = btnPlay.getParent();
+            if (parent != null) parent.getParent().repaint();
+        });
     }
 
     private JButton ctrlBtn(String text) {

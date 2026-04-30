@@ -23,6 +23,7 @@ com\halconmusic\ui\panels\AlbumesPanel$3.class
 com\halconmusic\ui\panels\BuscarPanel$5.class
 com\halconmusic\ui\panels\BuscarPanel$3$1.class
 com\halconmusic\ui\panels\HomePanel.class
+com\halconmusic\ui\AudioService.class
 com\halconmusic\dao\AlbumDAO.class
 com\halconmusic\ui\components\PlayerBar$1.class
 com\halconmusic\ui\components\SongRow$2.class
@@ -57,7 +58,6 @@ com\halconmusic\ui\panels\ArtistasPanel$3.class
 com\halconmusic\ui\panels\BuscarPanel$7.class
 com\halconmusic\App.class
 com\halconmusic\ui\panels\ResumenPanel$2.class
-com\halconmusic\ui\components\PlayerBar$6.class
 com\halconmusic\ui\components\CardComponent.class
 com\halconmusic\ui\panels\AlbumesPanel$5.class
 com\halconmusic\ui\components\Sidebar$3.class

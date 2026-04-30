@@ -39,6 +39,31 @@
             <artifactId>ojdbc11</artifactId>
             <version>21.1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>21</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>21</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>21</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>21</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>21</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -89,6 +114,9 @@
                     <version>3.1.0</version>
                     <configuration>
                         <mainClass>com.halconmusic.App</mainClass>
+                        <commandlineArgs>
+                            --add-modules javafx.media,javafx.base,javafx.controls,javafx.fxml,javafx.swing,javafx.web,javafx.graphics
+                        </commandlineArgs>
                     </configuration>
                 </plugin>
             </plugins>
