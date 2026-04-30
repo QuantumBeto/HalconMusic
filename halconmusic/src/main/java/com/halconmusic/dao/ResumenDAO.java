@@ -1,11 +1,14 @@
 package com.halconmusic.dao;
 
-import com.halconmusic.db.ConexionDB;
-import com.halconmusic.model.ResumenSemanal;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.halconmusic.db.ConexionDB;
+import com.halconmusic.model.ResumenSemanal;
 
 /**
  * DAO de Resúmenes Semanales.
@@ -28,7 +31,7 @@ public class ResumenDAO {
             SELECT R.ID_RESUMEN,
                    R.FECHA,
                    R.GENEROPRINCIPAL,
-                   R.CANCIONESPPRINCIPALES,
+                   R.CANCIONESPRINCIPALES,
                    R.ARTISTAPRINCIPAL,
                    R.EMOCION,
                    R.ID_USUARIO,
@@ -62,7 +65,7 @@ public class ResumenDAO {
             SELECT R.ID_RESUMEN,
                    R.FECHA,
                    R.GENEROPRINCIPAL,
-                   R.CANCIONESPPRINCIPALES,
+                   R.CANCIONESPRINCIPALES,
                    R.ARTISTAPRINCIPAL,
                    R.EMOCION,
                    R.ID_USUARIO,
@@ -122,7 +125,7 @@ public class ResumenDAO {
             rs.getString("ID_RESUMEN"),
             rs.getDate("FECHA"),
             rs.getString("GENEROPRINCIPAL"),
-            rs.getString("CANCIONESPPRINCIPALES"),
+            rs.getString("CANCIONESPRINCIPALES"),
             rs.getString("ARTISTAPRINCIPAL"),
             rs.getString("EMOCION"),
             rs.getString("ID_USUARIO"),

@@ -1,14 +1,19 @@
 package com.halconmusic.dao;
 
-import com.halconmusic.db.ConexionDB;
-import com.halconmusic.model.Artista;
-
-import javax.imageio.ImageIO;
 import java.awt.Image;
 import java.io.InputStream;
-import java.sql.*;
+import java.sql.Blob;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.imageio.ImageIO;
+
+import com.halconmusic.db.ConexionDB;
+import com.halconmusic.model.Artista;
 
 /**
  * DAO de Artistas — Todas las operaciones SQL relacionadas con ARTISTAS.
@@ -35,12 +40,12 @@ public class ArtistaDAO {
                    A.PORTADA,
                    A.DESCRIPCION,
                    A.GENEROPRINCIPAL,
-                   A.PAISORIGEN,
+                   A.PAISDEORIGEN,
                    COUNT(AC.ID_CANCION) AS TOTAL_CANCIONES
             FROM ARTISTAS A
             LEFT JOIN ARTISTAS_CANCIONES AC ON A.ID_ARTISTA = AC.ID_ARTISTA
             GROUP BY A.ID_ARTISTA, A.NOMBRE, A.PORTADA,
-                     A.DESCRIPCION, A.GENEROPRINCIPAL, A.PAISORIGEN
+                     A.DESCRIPCION, A.GENEROPRINCIPAL, A.PAISDEORIGEN
             ORDER BY UPPER(A.NOMBRE)
             """;
 
@@ -71,13 +76,13 @@ public class ArtistaDAO {
                    A.PORTADA,
                    A.DESCRIPCION,
                    A.GENEROPRINCIPAL,
-                   A.PAISORIGEN,
+                   A.PAISDEORIGEN,
                    COUNT(AC.ID_CANCION) AS TOTAL_CANCIONES
             FROM ARTISTAS A
             LEFT JOIN ARTISTAS_CANCIONES AC ON A.ID_ARTISTA = AC.ID_ARTISTA
             WHERE UPPER(A.NOMBRE) LIKE UPPER(?)
             GROUP BY A.ID_ARTISTA, A.NOMBRE, A.PORTADA,
-                     A.DESCRIPCION, A.GENEROPRINCIPAL, A.PAISORIGEN
+                     A.DESCRIPCION, A.GENEROPRINCIPAL, A.PAISDEORIGEN
             ORDER BY UPPER(A.NOMBRE)
             """;
 
@@ -115,7 +120,7 @@ public class ArtistaDAO {
      * SQL: COUNT + DISTINCT
      */
     public int contarPaisesDistintos() {
-        String sql = "SELECT COUNT(DISTINCT UPPER(PAISORIGEN)) FROM ARTISTAS";
+        String sql = "SELECT COUNT(DISTINCT UPPER(PAISDEORIGEN)) FROM ARTISTAS";
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) return rs.getInt(1);
@@ -146,7 +151,7 @@ public class ArtistaDAO {
             portada,
             rs.getString("DESCRIPCION"),
             rs.getString("GENEROPRINCIPAL"),
-            rs.getString("PAISORIGEN"),
+            rs.getString("PAISDEORIGEN"),
             rs.getInt("TOTAL_CANCIONES")
         );
     }
