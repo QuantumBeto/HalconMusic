@@ -4,31 +4,33 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-/**
- * Singleton para manejar la conexión a Oracle XE.
- * Solo existe UNA instancia de conexión en toda la aplicación.
- */
 public class ConexionDB {
 
-    private static final String URL      = "jdbc:oracle:thin:@localhost:1521/XE";
-    private static final String USUARIO  = "system";
-    private static final String PASSWORD = "12345678"; // Cambia tu password aquí
+    // ── Cambia estos 3 valores ────────────────────────────
+    private static final String WALLET_PATH = "C:/SQLDeveloper/Wallet_HalconMusic"; // Ruta de tu wallet
+    private static final String SERVICIO = "halconmusic_high"; // Del tnsnames.ora
+    private static final String PASSWORD = "Halcones2026"; // Password de ADMIN
+    // ─────────────────────────────────────────────────────
+
+    private static final String USUARIO = "ADMIN";
+    private static final String URL = "jdbc:oracle:thin:@" + SERVICIO;
 
     private static ConexionDB instancia;
     private Connection conexion;
 
-    // Constructor privado — nadie puede crear instancias desde fuera
     private ConexionDB() {
         try {
+            // Apunta al wallet para la conexión segura
+            System.setProperty("oracle.net.tns_admin", WALLET_PATH);
+
             this.conexion = DriverManager.getConnection(URL, USUARIO, PASSWORD);
-            System.out.println("✅ Conexión a Oracle XE establecida.");
+            System.out.println("✅ Conexión a Oracle Cloud establecida.");
         } catch (SQLException e) {
-            System.err.println("❌ Error al conectar con Oracle XE:");
+            System.err.println("❌ Error al conectar con Oracle Cloud:");
             e.printStackTrace();
         }
     }
 
-    /** Retorna la única instancia del singleton */
     public static ConexionDB getInstance() {
         if (instancia == null || !instancia.isConexionActiva()) {
             instancia = new ConexionDB();
@@ -36,12 +38,10 @@ public class ConexionDB {
         return instancia;
     }
 
-    /** Retorna el objeto Connection para ejecutar queries */
     public Connection getConexion() {
         return conexion;
     }
 
-    /** Verifica si la conexión sigue activa */
     private boolean isConexionActiva() {
         try {
             return conexion != null && !conexion.isClosed();
@@ -50,7 +50,6 @@ public class ConexionDB {
         }
     }
 
-    /** Cierra la conexión al terminar la app */
     public void cerrar() {
         try {
             if (conexion != null && !conexion.isClosed()) {
