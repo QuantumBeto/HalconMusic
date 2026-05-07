@@ -32,12 +32,13 @@ public class CancionesPanel extends JPanel {
     private final Consumer<Cancion> onPlay;
     private       JPanel           listPanel;
     private       JLabel           lblConteo;
-    private final String           idUsuario;
+    private       String           idUsuario;
 
     public CancionesPanel(Consumer<Cancion> onPlay, String idUsuario) {
         this.idUsuario = idUsuario;
         this.onPlay     = onPlay;
         this.cancionDAO = new CancionDAO();
+
         setBackground(UITheme.BG);
         setLayout(new BorderLayout(0, 0));
         setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
