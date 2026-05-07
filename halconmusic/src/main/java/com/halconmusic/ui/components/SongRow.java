@@ -1,14 +1,28 @@
 package com.halconmusic.ui.components;
 
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-
 /**
- * Fila de canción reutilizable con número, portada, título, artista, género, año y duración.
+ * Fila de canción reutilizable con número, portada, título, artista, género, año, duración y botón ♥.
  */
 public class SongRow extends JPanel {
 
@@ -16,7 +30,7 @@ public class SongRow extends JPanel {
     private final int      numero;
     private       boolean  playing = false;
 
-    public SongRow(int numero, Cancion cancion, Runnable onPlay) {
+    public SongRow(int numero, Cancion cancion, Runnable onPlay, String idUsuario, Runnable onMeGusta) {
         this.numero  = numero;
         this.cancion = cancion;
 
@@ -60,7 +74,7 @@ public class SongRow extends JPanel {
         info.add(lblTitle);
         info.add(lblArtist);
 
-        // Género + emoción
+        // Género
         JLabel lblGenero = label(cancion.getGenero(), UITheme.MUTED, UITheme.FONT_SMALL);
 
         // Año
@@ -70,6 +84,38 @@ public class SongRow extends JPanel {
         JLabel lblDur = label(cancion.getDuracionFormateada(), UITheme.MUTED, UITheme.FONT_SMALL);
         lblDur.setHorizontalAlignment(SwingConstants.RIGHT);
 
+        // Botón ♥ Me Gusta
+        JLabel btnHeart = new JLabel("♡");
+        btnHeart.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        btnHeart.setForeground(UITheme.MUTED);
+        btnHeart.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnHeart.setPreferredSize(new Dimension(30, 36));
+        btnHeart.setHorizontalAlignment(SwingConstants.CENTER);
+
+        if (idUsuario != null && onMeGusta != null) {
+            btnHeart.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    e.consume(); // evita que también dispare el onPlay del panel
+                    btnHeart.setText("♥");
+                    btnHeart.setForeground(new Color(0xFF, 0x22, 0x55));
+                    onMeGusta.run();
+                }
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    if (btnHeart.getText().equals("♡")) {
+                        btnHeart.setForeground(UITheme.TEXT);
+                    }
+                }
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (btnHeart.getText().equals("♡")) {
+                        btnHeart.setForeground(UITheme.MUTED);
+                    }
+                }
+            });
+        }
+
         // Layout
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(0, 4, 0, 4);
@@ -77,19 +123,25 @@ public class SongRow extends JPanel {
         gbc.gridy  = 0;
         gbc.weighty = 1;
 
-        gbc.gridx = 0; gbc.weightx = 0;   add(lblNum,   gbc);
-        gbc.gridx = 1; gbc.weightx = 0;   add(thumb,    gbc);
-        gbc.gridx = 2; gbc.weightx = 1;   add(info,     gbc);
-        gbc.gridx = 3; gbc.weightx = 0.3; add(lblGenero,gbc);
-        gbc.gridx = 4; gbc.weightx = 0.1; add(lblAnio,  gbc);
-        gbc.gridx = 5; gbc.weightx = 0;   add(lblDur,   gbc);
+        gbc.gridx = 0; gbc.weightx = 0;   add(lblNum,    gbc);
+        gbc.gridx = 1; gbc.weightx = 0;   add(thumb,     gbc);
+        gbc.gridx = 2; gbc.weightx = 1;   add(info,      gbc);
+        gbc.gridx = 3; gbc.weightx = 0.3; add(lblGenero, gbc);
+        gbc.gridx = 4; gbc.weightx = 0.1; add(lblAnio,   gbc);
+        gbc.gridx = 5; gbc.weightx = 0;   add(lblDur,    gbc);
+        gbc.gridx = 6; gbc.weightx = 0;   add(btnHeart,  gbc);
 
-        // Hover
+        // Hover + click para reproducir
         addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { setBackground(UITheme.HOVER); repaint(); }
             @Override public void mouseExited (MouseEvent e) { setBackground(null);          repaint(); }
             @Override public void mouseClicked(MouseEvent e) { if (onPlay != null) onPlay.run(); }
         });
+    }
+
+    /** Constructor sin Me Gusta (compatibilidad con paneles que no lo necesitan) */
+    public SongRow(int numero, Cancion cancion, Runnable onPlay) {
+        this(numero, cancion, onPlay, null, null);
     }
 
     public void setPlaying(boolean playing) {

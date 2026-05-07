@@ -34,21 +34,22 @@ import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
 
 /**
- * Panel de búsqueda global — busca en canciones, artistas y álbumes simultáneamente.
- * Usa UPPER + LOWER + LIKE en múltiples columnas.
+ * Panel de búsqueda global — busca en canciones, artistas y álbumes.
  */
 public class BuscarPanel extends JPanel {
 
-    private final CancionDAO       cancionDAO;
-    private final ArtistaDAO       artistaDAO;
-    private final AlbumDAO         albumDAO;
+    private final CancionDAO        cancionDAO;
+    private final ArtistaDAO        artistaDAO;
+    private final AlbumDAO          albumDAO;
     private final Consumer<Cancion> onPlay;
-    private       JPanel           resultsArea;
-    private final String           idUsuario;
+    private final Consumer<Cancion> onMeGusta;
+    private final String            idUsuario;
+    private       JPanel            resultsArea;
 
-    public BuscarPanel(Consumer<Cancion> onPlay, String idUsuario) {
-        this.idUsuario = idUsuario;
+    public BuscarPanel(Consumer<Cancion> onPlay, Consumer<Cancion> onMeGusta, String idUsuario) {
         this.onPlay     = onPlay;
+        this.onMeGusta  = onMeGusta;
+        this.idUsuario  = idUsuario;
         this.cancionDAO = new CancionDAO();
         this.artistaDAO = new ArtistaDAO();
         this.albumDAO   = new AlbumDAO();
@@ -82,7 +83,6 @@ public class BuscarPanel extends JPanel {
         titulo.setFont(UITheme.FONT_SECTION);
         titulo.setForeground(UITheme.TEXT);
 
-        // Campo grande de búsqueda
         JPanel searchBox = new JPanel(new BorderLayout(10, 0));
         searchBox.setBackground(UITheme.SURFACE);
         searchBox.setBorder(BorderFactory.createCompoundBorder(
@@ -122,9 +122,9 @@ public class BuscarPanel extends JPanel {
     private void buscar(String termino) {
         if (termino.isBlank()) { mostrarEstadoInicial(); return; }
 
-        List<Cancion>  canciones = cancionDAO.buscar(termino);
-        List<Artista>  artistas  = artistaDAO.buscarPorNombre(termino);
-        List<Album>    albumes   = albumDAO.buscar(termino);
+        List<Cancion> canciones = cancionDAO.buscar(termino);
+        List<Artista> artistas  = artistaDAO.buscarPorNombre(termino);
+        List<Album>   albumes   = albumDAO.buscar(termino);
 
         resultsArea.removeAll();
 
@@ -136,13 +136,12 @@ public class BuscarPanel extends JPanel {
         resultsArea.add(lblTotal);
         resultsArea.add(Box.createVerticalStrut(18));
 
-        // Canciones
         if (!canciones.isEmpty()) {
             resultsArea.add(seccion("Canciones (" + canciones.size() + ")"));
             int i = 1;
             for (Cancion c : canciones) {
                 final Cancion cancion = c;
-                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion));
+                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onMeGusta.accept(cancion));
                 row.setAlignmentX(Component.LEFT_ALIGNMENT);
                 row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
                 resultsArea.add(row);
@@ -151,7 +150,6 @@ public class BuscarPanel extends JPanel {
             resultsArea.add(Box.createVerticalStrut(18));
         }
 
-        // Artistas
         if (!artistas.isEmpty()) {
             resultsArea.add(seccion("Artistas (" + artistas.size() + ")"));
             JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
@@ -162,7 +160,6 @@ public class BuscarPanel extends JPanel {
             resultsArea.add(Box.createVerticalStrut(18));
         }
 
-        // Álbumes
         if (!albumes.isEmpty()) {
             resultsArea.add(seccion("Álbumes (" + albumes.size() + ")"));
             JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
@@ -192,7 +189,6 @@ public class BuscarPanel extends JPanel {
         hint.setForeground(UITheme.MUTED);
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Géneros populares
         JLabel lblGeneros = new JLabel("Explorar por género");
         lblGeneros.setFont(UITheme.FONT_SECTION);
         lblGeneros.setForeground(UITheme.TEXT);
@@ -275,7 +271,6 @@ public class BuscarPanel extends JPanel {
         p.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 8));
         p.setPreferredSize(new Dimension(200, 52));
 
-        // Avatar circular pequeño
         JPanel av = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
