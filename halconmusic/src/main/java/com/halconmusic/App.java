@@ -1,15 +1,29 @@
 package com.halconmusic;
 
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Dimension;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+
 import com.halconmusic.dao.HistorialDAO;
 import com.halconmusic.db.ConexionDB;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.PlayerBar;
 import com.halconmusic.ui.components.Sidebar;
-import com.halconmusic.ui.panels.*;
-
-import javax.swing.*;
-import java.awt.*;
+import com.halconmusic.ui.panels.AlbumesPanel;
+import com.halconmusic.ui.panels.ArtistasPanel;
+import com.halconmusic.ui.panels.BuscarPanel;
+import com.halconmusic.ui.panels.CancionesPanel;
+import com.halconmusic.ui.panels.HomePanel;
+import com.halconmusic.ui.panels.MeGustasPanel;
+import com.halconmusic.ui.panels.ResumenPanel;
 
 /**
  * Ventana principal de HalconMusic.
