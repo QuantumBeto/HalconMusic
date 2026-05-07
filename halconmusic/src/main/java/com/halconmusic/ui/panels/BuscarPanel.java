@@ -34,20 +34,25 @@ import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
 
 /**
- * Panel de búsqueda global — busca en canciones, artistas y álbumes simultáneamente.
- * Usa UPPER + LOWER + LIKE en múltiples columnas.
+ * Panel de búsqueda global.
+ *
+ * Req. 1 — BUSCADOR: busca canciones que INICIEN con la palabra escrita
+ *           (usa LIKE 'termino%' en la columna NOMBRE de CANCIONES).
+ * Req. 2 — RESULTADO LISTA DE CANCIONES: despliega todas las que cumplen.
+ * Req. 3 — REPRODUCTOR: al hacer clic en la fila la canción se reproduce.
+ * Req. 5 — ME GUSTA: cada fila tiene el botón ♥ para guardar en ME_GUSTA.
  */
 public class BuscarPanel extends JPanel {
 
-    private final CancionDAO       cancionDAO;
-    private final ArtistaDAO       artistaDAO;
-    private final AlbumDAO         albumDAO;
+    private final CancionDAO        cancionDAO;
+    private final ArtistaDAO        artistaDAO;
+    private final AlbumDAO          albumDAO;
     private final Consumer<Cancion> onPlay;
-    private       JPanel           resultsArea;
-    private final String           idUsuario;
+    private       JPanel            resultsArea;
+    private final String            idUsuario;
 
     public BuscarPanel(Consumer<Cancion> onPlay, String idUsuario) {
-        this.idUsuario = idUsuario;
+        this.idUsuario  = idUsuario;
         this.onPlay     = onPlay;
         this.cancionDAO = new CancionDAO();
         this.artistaDAO = new ArtistaDAO();
@@ -73,6 +78,7 @@ public class BuscarPanel extends JPanel {
         mostrarEstadoInicial();
     }
 
+    // ── Barra de búsqueda ─────────────────────────────────
     private JPanel buildSearchBar() {
         JPanel p = new JPanel(new BorderLayout(0, 14));
         p.setOpaque(false);
@@ -82,7 +88,18 @@ public class BuscarPanel extends JPanel {
         titulo.setFont(UITheme.FONT_SECTION);
         titulo.setForeground(UITheme.TEXT);
 
-        // Campo grande de búsqueda
+        JLabel subtitulo = new JLabel("Escribe el inicio del nombre de la canción, artista o género");
+        subtitulo.setFont(UITheme.FONT_SMALL);
+        subtitulo.setForeground(UITheme.MUTED);
+
+        JPanel headPanel = new JPanel();
+        headPanel.setOpaque(false);
+        headPanel.setLayout(new BoxLayout(headPanel, BoxLayout.Y_AXIS));
+        headPanel.add(titulo);
+        headPanel.add(Box.createVerticalStrut(2));
+        headPanel.add(subtitulo);
+
+        // Campo de búsqueda
         JPanel searchBox = new JPanel(new BorderLayout(10, 0));
         searchBox.setBackground(UITheme.SURFACE);
         searchBox.setBorder(BorderFactory.createCompoundBorder(
@@ -100,7 +117,7 @@ public class BuscarPanel extends JPanel {
         field.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         field.setBorder(null);
         field.setCaretColor(UITheme.ACCENT);
-        field.putClientProperty("JTextField.placeholderText", "Canciones, artistas, álbumes, géneros...");
+        field.putClientProperty("JTextField.placeholderText", "Empieza a escribir...");
 
         field.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             public void insertUpdate (javax.swing.event.DocumentEvent e) { buscar(field.getText()); }
@@ -114,17 +131,20 @@ public class BuscarPanel extends JPanel {
         searchBox.add(lupa,  BorderLayout.WEST);
         searchBox.add(field, BorderLayout.CENTER);
 
-        p.add(titulo,    BorderLayout.NORTH);
-        p.add(searchBox, BorderLayout.CENTER);
+        p.add(headPanel,  BorderLayout.NORTH);
+        p.add(searchBox,  BorderLayout.CENTER);
         return p;
     }
 
+    // ── Req. 1 & 2: Búsqueda por inicio de palabra ────────
     private void buscar(String termino) {
         if (termino.isBlank()) { mostrarEstadoInicial(); return; }
 
-        List<Cancion>  canciones = cancionDAO.buscar(termino);
-        List<Artista>  artistas  = artistaDAO.buscarPorNombre(termino);
-        List<Album>    albumes   = albumDAO.buscar(termino);
+        // Req. 1: canciones que INICIAN con el término (usa buscarPorInicio en el DAO)
+        List<Cancion> canciones = cancionDAO.buscarPorInicio(termino);
+        // Artistas y álbumes usan contains (búsqueda amplia)
+        List<Artista> artistas  = artistaDAO.buscarPorNombre(termino);
+        List<Album>   albumes   = albumDAO.buscar(termino);
 
         resultsArea.removeAll();
 
@@ -136,13 +156,14 @@ public class BuscarPanel extends JPanel {
         resultsArea.add(lblTotal);
         resultsArea.add(Box.createVerticalStrut(18));
 
-        // Canciones
+        // Req. 2 — Lista de canciones resultantes
         if (!canciones.isEmpty()) {
             resultsArea.add(seccion("Canciones (" + canciones.size() + ")"));
             int i = 1;
             for (Cancion c : canciones) {
                 final Cancion cancion = c;
-                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion));
+                // Req. 3 — clic reproduce; Req. 5 — ♥ guarda en Me Gusta
+                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario);
                 row.setAlignmentX(Component.LEFT_ALIGNMENT);
                 row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
                 resultsArea.add(row);
@@ -151,7 +172,6 @@ public class BuscarPanel extends JPanel {
             resultsArea.add(Box.createVerticalStrut(18));
         }
 
-        // Artistas
         if (!artistas.isEmpty()) {
             resultsArea.add(seccion("Artistas (" + artistas.size() + ")"));
             JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
@@ -162,7 +182,6 @@ public class BuscarPanel extends JPanel {
             resultsArea.add(Box.createVerticalStrut(18));
         }
 
-        // Álbumes
         if (!albumes.isEmpty()) {
             resultsArea.add(seccion("Álbumes (" + albumes.size() + ")"));
             JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
@@ -173,7 +192,7 @@ public class BuscarPanel extends JPanel {
         }
 
         if (total == 0) {
-            JLabel lblVacio = new JLabel("No se encontraron resultados.");
+            JLabel lblVacio = new JLabel("No se encontraron canciones que inicien con \"" + termino + "\".");
             lblVacio.setFont(UITheme.FONT_BODY);
             lblVacio.setForeground(UITheme.MUTED);
             lblVacio.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -184,15 +203,15 @@ public class BuscarPanel extends JPanel {
         resultsArea.repaint();
     }
 
+    // ── Estado inicial con chips de género ────────────────
     private void mostrarEstadoInicial() {
         resultsArea.removeAll();
 
-        JLabel hint = new JLabel("Escribe algo para comenzar a buscar...");
+        JLabel hint = new JLabel("Escribe algo para buscar canciones...");
         hint.setFont(UITheme.FONT_BODY);
         hint.setForeground(UITheme.MUTED);
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Géneros populares
         JLabel lblGeneros = new JLabel("Explorar por género");
         lblGeneros.setFont(UITheme.FONT_SECTION);
         lblGeneros.setForeground(UITheme.TEXT);
@@ -204,12 +223,9 @@ public class BuscarPanel extends JPanel {
 
         String[] generos = {"Reggaeton","Corridos Tumbados","Balada","Ranchera","Banda","Grupero","Pop"};
         Color[]  colores = {
-            new Color(0x1A, 0x5C, 0x96),
-            new Color(0x6A, 0x1A, 0x1A),
-            new Color(0x1A, 0x6A, 0x3A),
-            new Color(0x6A, 0x4A, 0x1A),
-            new Color(0x4A, 0x1A, 0x6A),
-            new Color(0x1A, 0x4A, 0x6A),
+            new Color(0x1A, 0x5C, 0x96), new Color(0x6A, 0x1A, 0x1A),
+            new Color(0x1A, 0x6A, 0x3A), new Color(0x6A, 0x4A, 0x1A),
+            new Color(0x4A, 0x1A, 0x6A), new Color(0x1A, 0x4A, 0x6A),
             new Color(0x6A, 0x1A, 0x4A)
         };
 
@@ -252,7 +268,6 @@ public class BuscarPanel extends JPanel {
         p.setLayout(new FlowLayout(FlowLayout.CENTER, 8, 8));
         p.setPreferredSize(new Dimension(140, 46));
         p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
         JLabel l = new JLabel(genero);
         l.setFont(UITheme.FONT_BODY);
         l.setForeground(UITheme.TEXT);
@@ -275,7 +290,6 @@ public class BuscarPanel extends JPanel {
         p.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 8));
         p.setPreferredSize(new Dimension(200, 52));
 
-        // Avatar circular pequeño
         JPanel av = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -294,17 +308,11 @@ public class BuscarPanel extends JPanel {
 
         JPanel info = new JPanel(new GridLayout(2, 1, 0, 1));
         info.setOpaque(false);
-        JLabel n = new JLabel(a.getNombre());
-        n.setFont(UITheme.FONT_BODY);
-        n.setForeground(UITheme.TEXT);
-        JLabel g = new JLabel(a.getGeneroPrincipal());
-        g.setFont(UITheme.FONT_SMALL);
-        g.setForeground(UITheme.MUTED);
-        info.add(n);
-        info.add(g);
+        JLabel n = new JLabel(a.getNombre());          n.setFont(UITheme.FONT_BODY);  n.setForeground(UITheme.TEXT);
+        JLabel g = new JLabel(a.getGeneroPrincipal()); g.setFont(UITheme.FONT_SMALL); g.setForeground(UITheme.MUTED);
+        info.add(n); info.add(g);
 
-        p.add(av);
-        p.add(info);
+        p.add(av); p.add(info);
         return p;
     }
 
@@ -340,17 +348,11 @@ public class BuscarPanel extends JPanel {
 
         JPanel info = new JPanel(new GridLayout(2, 1, 0, 1));
         info.setOpaque(false);
-        JLabel t = new JLabel(al.getTitulo());
-        t.setFont(UITheme.FONT_BODY);
-        t.setForeground(UITheme.TEXT);
-        JLabel a = new JLabel(al.getNombreArtista());
-        a.setFont(UITheme.FONT_SMALL);
-        a.setForeground(UITheme.MUTED);
-        info.add(t);
-        info.add(a);
+        JLabel t = new JLabel(al.getTitulo());        t.setFont(UITheme.FONT_BODY);  t.setForeground(UITheme.TEXT);
+        JLabel a = new JLabel(al.getNombreArtista()); a.setFont(UITheme.FONT_SMALL); a.setForeground(UITheme.MUTED);
+        info.add(t); info.add(a);
 
-        p.add(img);
-        p.add(info);
+        p.add(img); p.add(info);
         return p;
     }
 

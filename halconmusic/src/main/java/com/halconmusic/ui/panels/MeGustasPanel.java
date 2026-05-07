@@ -11,14 +11,15 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Panel de canciones que le gustan al usuario.
- * Usa JOIN MEGUSTAS + MEGUSTAS_CANCIONES + CANCIONES + ARTISTAS.
+ * Panel de canciones favoritas del usuario.
+ * Req. 5 — ME GUSTA: muestra las canciones guardadas en la tabla MEGUSTAS_CANCIONES.
+ * Cada fila tiene el botón ♥ ya activo (ya son favoritas).
  */
 public class MeGustasPanel extends JPanel {
 
-    private final CancionDAO       cancionDAO;
+    private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
-    private final String           idUsuario;
+    private final String            idUsuario;
 
     public MeGustasPanel(Consumer<Cancion> onPlay, String idUsuario) {
         this.onPlay     = onPlay;
@@ -41,7 +42,6 @@ public class MeGustasPanel extends JPanel {
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
 
-        // Hero visual
         JPanel hero = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -50,7 +50,6 @@ public class MeGustasPanel extends JPanel {
                                                      getWidth(), getHeight(), UITheme.BG);
                 g2.setPaint(gp);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), UITheme.RADIUS, UITheme.RADIUS);
-                // Ícono de corazón grande decorativo
                 g2.setFont(new Font("Segoe UI", Font.PLAIN, 56));
                 g2.setColor(new Color(0xFF, 0x00, 0x50, 30));
                 g2.drawString("♥", getWidth() - 90, 70);
@@ -81,7 +80,6 @@ public class MeGustasPanel extends JPanel {
         hero.add(Box.createVerticalStrut(4));
         hero.add(lblTitle);
         hero.add(lblSub);
-
         p.add(hero);
         return p;
     }
@@ -92,7 +90,7 @@ public class MeGustasPanel extends JPanel {
         lista.setLayout(new BoxLayout(lista, BoxLayout.Y_AXIS));
 
         if (canciones.isEmpty()) {
-            JLabel vacio = new JLabel("Aún no tienes canciones marcadas como favoritas.");
+            JLabel vacio = new JLabel("Aún no tienes canciones marcadas como favoritas. Usa el botón ♥ en cualquier canción.");
             vacio.setFont(UITheme.FONT_BODY);
             vacio.setForeground(UITheme.MUTED);
             lista.add(vacio);
@@ -100,7 +98,7 @@ public class MeGustasPanel extends JPanel {
             int i = 1;
             for (Cancion c : canciones) {
                 final Cancion cancion = c;
-                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion));
+                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario);
                 row.setAlignmentX(Component.LEFT_ALIGNMENT);
                 lista.add(row);
                 lista.add(Box.createVerticalStrut(2));

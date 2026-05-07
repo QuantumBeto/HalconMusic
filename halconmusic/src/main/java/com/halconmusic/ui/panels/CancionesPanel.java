@@ -1,6 +1,7 @@
 package com.halconmusic.ui.panels;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -23,19 +24,20 @@ import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
 
 /**
- * Panel de canciones con búsqueda por nombre, artista, género o emoción.
- * Usa UPPER + LIKE en el DAO.
+ * Biblioteca completa de canciones.
+ * Req. 3 — REPRODUCTOR: clic en fila reproduce la canción.
+ * Req. 5 — ME GUSTA: botón ♥ en cada fila guarda en ME_GUSTA.
  */
 public class CancionesPanel extends JPanel {
 
-    private final CancionDAO       cancionDAO;
+    private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
-    private       JPanel           listPanel;
-    private       JLabel           lblConteo;
-    private       String           idUsuario;
+    private       JPanel            listPanel;
+    private       JLabel            lblConteo;
+    private final String            idUsuario;
 
     public CancionesPanel(Consumer<Cancion> onPlay, String idUsuario) {
-        this.idUsuario = idUsuario;
+        this.idUsuario  = idUsuario;
         this.onPlay     = onPlay;
         this.cancionDAO = new CancionDAO();
 
@@ -43,8 +45,8 @@ public class CancionesPanel extends JPanel {
         setLayout(new BorderLayout(0, 0));
         setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
-        add(buildTopBar(),    BorderLayout.NORTH);
-        add(buildListArea(),  BorderLayout.CENTER);
+        add(buildTopBar(),   BorderLayout.NORTH);
+        add(buildListArea(), BorderLayout.CENTER);
 
         cargarCanciones(cancionDAO.obtenerTodas());
     }
@@ -62,7 +64,6 @@ public class CancionesPanel extends JPanel {
         lblConteo.setFont(UITheme.FONT_SMALL);
         lblConteo.setForeground(UITheme.MUTED);
 
-        // Barra de búsqueda
         JPanel searchBox = new JPanel(new BorderLayout(6, 0));
         searchBox.setBackground(UITheme.SURFACE);
         searchBox.setBorder(BorderFactory.createCompoundBorder(
@@ -104,19 +105,19 @@ public class CancionesPanel extends JPanel {
     }
 
     private JScrollPane buildListArea() {
-        // Header de columnas
         JPanel header = new JPanel(new GridBagLayout());
         header.setOpaque(false);
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, UITheme.BORDER));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridy = 0; gbc.fill = GridBagConstraints.BOTH; gbc.insets = new Insets(4, 4, 4, 4);
 
-        gbc.gridx = 0; gbc.weightx = 0;   header.add(colLabel("#"),            gbc);
-        gbc.gridx = 1; gbc.weightx = 0;   header.add(colLabel(""),             gbc); // thumb
-        gbc.gridx = 2; gbc.weightx = 1;   header.add(colLabel("Título"),       gbc);
-        gbc.gridx = 3; gbc.weightx = 0.3; header.add(colLabel("Género"),       gbc);
-        gbc.gridx = 4; gbc.weightx = 0.1; header.add(colLabel("Año"),          gbc);
-        gbc.gridx = 5; gbc.weightx = 0;   header.add(colLabel("Duración"),     gbc);
+        gbc.gridx = 0; gbc.weightx = 0;   header.add(colLabel("#"),        gbc);
+        gbc.gridx = 1; gbc.weightx = 0;   header.add(colLabel(""),         gbc);
+        gbc.gridx = 2; gbc.weightx = 1;   header.add(colLabel("Título"),   gbc);
+        gbc.gridx = 3; gbc.weightx = 0.3; header.add(colLabel("Género"),   gbc);
+        gbc.gridx = 4; gbc.weightx = 0.1; header.add(colLabel("Año"),      gbc);
+        gbc.gridx = 5; gbc.weightx = 0;   header.add(colLabel("Duración"), gbc);
+        gbc.gridx = 6; gbc.weightx = 0;   header.add(colLabel("♥"),        gbc);
 
         listPanel = new JPanel();
         listPanel.setOpaque(false);
@@ -149,7 +150,10 @@ public class CancionesPanel extends JPanel {
         int i = 1;
         for (Cancion c : canciones) {
             final Cancion cancion = c;
-            listPanel.add(new SongRow(i++, c, () -> onPlay.accept(cancion)));
+            // Req. 3 & 5: reproducir + botón ♥
+            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario);
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            listPanel.add(row);
             listPanel.add(Box.createVerticalStrut(2));
         }
         listPanel.revalidate();
