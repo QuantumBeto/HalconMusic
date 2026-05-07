@@ -1,14 +1,26 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+
 import com.halconmusic.dao.CancionDAO;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Panel de canciones con búsqueda por nombre, artista, género o emoción.
@@ -20,11 +32,12 @@ public class CancionesPanel extends JPanel {
     private final Consumer<Cancion> onPlay;
     private       JPanel           listPanel;
     private       JLabel           lblConteo;
+    private final String           idUsuario;
 
-    public CancionesPanel(Consumer<Cancion> onPlay) {
+    public CancionesPanel(Consumer<Cancion> onPlay, String idUsuario) {
+        this.idUsuario = idUsuario;
         this.onPlay     = onPlay;
         this.cancionDAO = new CancionDAO();
-
         setBackground(UITheme.BG);
         setLayout(new BorderLayout(0, 0));
         setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));

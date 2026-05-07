@@ -1,5 +1,29 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+
 import com.halconmusic.dao.AlbumDAO;
 import com.halconmusic.dao.ArtistaDAO;
 import com.halconmusic.dao.CancionDAO;
@@ -8,12 +32,6 @@ import com.halconmusic.model.Artista;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Panel de búsqueda global — busca en canciones, artistas y álbumes simultáneamente.
@@ -26,8 +44,10 @@ public class BuscarPanel extends JPanel {
     private final AlbumDAO         albumDAO;
     private final Consumer<Cancion> onPlay;
     private       JPanel           resultsArea;
+    private final String           idUsuario;
 
-    public BuscarPanel(Consumer<Cancion> onPlay) {
+    public BuscarPanel(Consumer<Cancion> onPlay, String idUsuario) {
+        this.idUsuario = idUsuario;
         this.onPlay     = onPlay;
         this.cancionDAO = new CancionDAO();
         this.artistaDAO = new ArtistaDAO();
