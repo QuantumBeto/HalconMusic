@@ -1,14 +1,26 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+
 import com.halconmusic.dao.CancionDAO;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Panel de canciones con búsqueda por nombre, artista, género o emoción.
