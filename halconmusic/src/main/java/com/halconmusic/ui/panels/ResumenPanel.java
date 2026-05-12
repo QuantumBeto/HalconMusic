@@ -14,20 +14,21 @@ import java.util.function.Consumer;
 
 /**
  * Panel de resumen semanal e historial del usuario.
- * Usa JOIN + GROUP BY + COUNT en el DAO.
  */
 public class ResumenPanel extends JPanel {
 
-    private final ResumenDAO       resumenDAO;
-    private final CancionDAO       cancionDAO;
+    private final ResumenDAO        resumenDAO;
+    private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
-    private final String           idUsuario;
+    private final Consumer<Cancion> onMeGusta;
+    private final String            idUsuario;
 
-    public ResumenPanel(Consumer<Cancion> onPlay, String idUsuario) {
-        this.onPlay      = onPlay;
-        this.idUsuario   = idUsuario;
-        this.resumenDAO  = new ResumenDAO();
-        this.cancionDAO  = new CancionDAO();
+    public ResumenPanel(Consumer<Cancion> onPlay, Consumer<Cancion> onMeGusta, String idUsuario) {
+        this.onPlay     = onPlay;
+        this.onMeGusta  = onMeGusta;
+        this.idUsuario  = idUsuario;
+        this.resumenDAO = new ResumenDAO();
+        this.cancionDAO = new CancionDAO();
 
         setBackground(UITheme.BG);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -36,16 +37,22 @@ public class ResumenPanel extends JPanel {
         cargar();
     }
 
+    /** Limpia y recarga todo el panel — llamar tras reproducir para actualizar historial */
+    public void refrescar() {
+        removeAll();
+        cargar();
+        revalidate();
+        repaint();
+    }
+
     private void cargar() {
         ResumenSemanal resumen = resumenDAO.obtenerUltimoDeUsuario(idUsuario);
 
-        // Header
         JLabel titulo = lbl("Tu resumen semanal", UITheme.TEXT, UITheme.FONT_SECTION);
         titulo.setAlignmentX(Component.LEFT_ALIGNMENT);
         add(titulo);
         add(Box.createVerticalStrut(14));
 
-        // Tarjeta de resumen
         if (resumen != null) {
             add(buildResumenCard(resumen));
         } else {
@@ -54,7 +61,6 @@ public class ResumenPanel extends JPanel {
 
         add(Box.createVerticalStrut(28));
 
-        // Géneros más escuchados
         JLabel lblGeneros = lbl("Géneros más escuchados", UITheme.TEXT, UITheme.FONT_SECTION);
         lblGeneros.setAlignmentX(Component.LEFT_ALIGNMENT);
         add(lblGeneros);
@@ -62,7 +68,6 @@ public class ResumenPanel extends JPanel {
         add(buildGenerosChart());
         add(Box.createVerticalStrut(28));
 
-        // Historial
         JLabel lblHistorial = lbl("Escuchado recientemente", UITheme.TEXT, UITheme.FONT_SECTION);
         lblHistorial.setAlignmentX(Component.LEFT_ALIGNMENT);
         add(lblHistorial);
@@ -81,7 +86,6 @@ public class ResumenPanel extends JPanel {
                 );
                 g2.setPaint(gp);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), UITheme.RADIUS, UITheme.RADIUS);
-                // Borde dorado sutil
                 g2.setColor(UITheme.withAlpha(UITheme.ACCENT, 60));
                 g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, UITheme.RADIUS, UITheme.RADIUS);
                 g2.dispose();
@@ -94,12 +98,12 @@ public class ResumenPanel extends JPanel {
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 140));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        card.add(stat("Género principal",   r.getGeneroPrincipal()));
-        card.add(stat("Artista principal",  r.getArtistaPrincipal()));
-        card.add(stat("Emoción dominante",  r.getEmocion()));
-        card.add(stat("Canciones top",      acortar(r.getCancionesPrincipales(), 30)));
-        card.add(stat("Fecha del resumen",  r.getFecha() != null ? r.getFecha().toString() : "-"));
-        card.add(stat("ID resumen",         r.getIdResumen()));
+        card.add(stat("Género principal",  r.getGeneroPrincipal()));
+        card.add(stat("Artista principal", r.getArtistaPrincipal()));
+        card.add(stat("Emoción dominante", r.getEmocion()));
+        card.add(stat("Canciones top",     acortar(r.getCancionesPrincipales(), 30)));
+        card.add(stat("Fecha del resumen", r.getFecha() != null ? r.getFecha().toString() : "-"));
+        card.add(stat("ID resumen",        r.getIdResumen()));
 
         return card;
     }
@@ -152,7 +156,6 @@ public class ResumenPanel extends JPanel {
             lblGenero.setForeground(UITheme.TEXT);
             lblGenero.setPreferredSize(new Dimension(180, 22));
 
-            // Barra de progreso visual
             JPanel barTrack = new JPanel(new BorderLayout()) {
                 @Override protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
@@ -196,7 +199,7 @@ public class ResumenPanel extends JPanel {
         int i = 1;
         for (Cancion c : historial) {
             final Cancion cancion = c;
-            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion));
+            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onMeGusta.accept(cancion));
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
             p.add(row);
             p.add(Box.createVerticalStrut(2));

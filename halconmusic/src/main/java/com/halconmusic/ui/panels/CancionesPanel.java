@@ -1,7 +1,6 @@
 package com.halconmusic.ui.panels;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -24,21 +23,21 @@ import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
 
 /**
- * Biblioteca completa de canciones.
- * Req. 3 — REPRODUCTOR: clic en fila reproduce la canción.
- * Req. 5 — ME GUSTA: botón ♥ en cada fila guarda en ME_GUSTA.
+ * Panel de canciones con búsqueda por nombre, artista, género o emoción.
  */
 public class CancionesPanel extends JPanel {
 
     private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
+    private final Consumer<Cancion> onMeGusta;
+    private final String            idUsuario;
     private       JPanel            listPanel;
     private       JLabel            lblConteo;
-    private final String            idUsuario;
 
-    public CancionesPanel(Consumer<Cancion> onPlay, String idUsuario) {
-        this.idUsuario  = idUsuario;
-        this.onPlay     = onPlay;
+    public CancionesPanel(Consumer<Cancion> onPlay, Consumer<Cancion> onMeGusta, String idUsuario) {
+        this.onPlay    = onPlay;
+        this.onMeGusta = onMeGusta;
+        this.idUsuario = idUsuario;
         this.cancionDAO = new CancionDAO();
 
         setBackground(UITheme.BG);
@@ -150,9 +149,7 @@ public class CancionesPanel extends JPanel {
         int i = 1;
         for (Cancion c : canciones) {
             final Cancion cancion = c;
-            // Req. 3 & 5: reproducir + botón ♥
-            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario);
-            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onMeGusta.accept(cancion));
             listPanel.add(row);
             listPanel.add(Box.createVerticalStrut(2));
         }

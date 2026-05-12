@@ -34,13 +34,7 @@ import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
 
 /**
- * Panel de búsqueda global.
- *
- * Req. 1 — BUSCADOR: busca canciones que INICIEN con la palabra escrita
- *           (usa LIKE 'termino%' en la columna NOMBRE de CANCIONES).
- * Req. 2 — RESULTADO LISTA DE CANCIONES: despliega todas las que cumplen.
- * Req. 3 — REPRODUCTOR: al hacer clic en la fila la canción se reproduce.
- * Req. 5 — ME GUSTA: cada fila tiene el botón ♥ para guardar en ME_GUSTA.
+ * Panel de búsqueda global — busca en canciones, artistas y álbumes.
  */
 public class BuscarPanel extends JPanel {
 
@@ -48,12 +42,14 @@ public class BuscarPanel extends JPanel {
     private final ArtistaDAO        artistaDAO;
     private final AlbumDAO          albumDAO;
     private final Consumer<Cancion> onPlay;
-    private       JPanel            resultsArea;
+    private final Consumer<Cancion> onMeGusta;
     private final String            idUsuario;
+    private       JPanel            resultsArea;
 
-    public BuscarPanel(Consumer<Cancion> onPlay, String idUsuario) {
-        this.idUsuario  = idUsuario;
+    public BuscarPanel(Consumer<Cancion> onPlay, Consumer<Cancion> onMeGusta, String idUsuario) {
         this.onPlay     = onPlay;
+        this.onMeGusta  = onMeGusta;
+        this.idUsuario  = idUsuario;
         this.cancionDAO = new CancionDAO();
         this.artistaDAO = new ArtistaDAO();
         this.albumDAO   = new AlbumDAO();
@@ -88,18 +84,6 @@ public class BuscarPanel extends JPanel {
         titulo.setFont(UITheme.FONT_SECTION);
         titulo.setForeground(UITheme.TEXT);
 
-        JLabel subtitulo = new JLabel("Escribe el inicio del nombre de la canción, artista o género");
-        subtitulo.setFont(UITheme.FONT_SMALL);
-        subtitulo.setForeground(UITheme.MUTED);
-
-        JPanel headPanel = new JPanel();
-        headPanel.setOpaque(false);
-        headPanel.setLayout(new BoxLayout(headPanel, BoxLayout.Y_AXIS));
-        headPanel.add(titulo);
-        headPanel.add(Box.createVerticalStrut(2));
-        headPanel.add(subtitulo);
-
-        // Campo de búsqueda
         JPanel searchBox = new JPanel(new BorderLayout(10, 0));
         searchBox.setBackground(UITheme.SURFACE);
         searchBox.setBorder(BorderFactory.createCompoundBorder(
@@ -140,9 +124,7 @@ public class BuscarPanel extends JPanel {
     private void buscar(String termino) {
         if (termino.isBlank()) { mostrarEstadoInicial(); return; }
 
-        // Req. 1: canciones que INICIAN con el término (usa buscarPorInicio en el DAO)
-        List<Cancion> canciones = cancionDAO.buscarPorInicio(termino);
-        // Artistas y álbumes usan contains (búsqueda amplia)
+        List<Cancion> canciones = cancionDAO.buscar(termino);
         List<Artista> artistas  = artistaDAO.buscarPorNombre(termino);
         List<Album>   albumes   = albumDAO.buscar(termino);
 
@@ -156,14 +138,12 @@ public class BuscarPanel extends JPanel {
         resultsArea.add(lblTotal);
         resultsArea.add(Box.createVerticalStrut(18));
 
-        // Req. 2 — Lista de canciones resultantes
         if (!canciones.isEmpty()) {
             resultsArea.add(seccion("Canciones (" + canciones.size() + ")"));
             int i = 1;
             for (Cancion c : canciones) {
                 final Cancion cancion = c;
-                // Req. 3 — clic reproduce; Req. 5 — ♥ guarda en Me Gusta
-                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario);
+                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onMeGusta.accept(cancion));
                 row.setAlignmentX(Component.LEFT_ALIGNMENT);
                 row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
                 resultsArea.add(row);

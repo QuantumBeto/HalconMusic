@@ -1,37 +1,64 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
 import com.halconmusic.dao.CancionDAO;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.List;
-import java.util.function.Consumer;
-
 /**
- * Panel de canciones favoritas del usuario.
- * Req. 5 — ME GUSTA: muestra las canciones guardadas en la tabla MEGUSTAS_CANCIONES.
- * Cada fila tiene el botón ♥ ya activo (ya son favoritas).
+ * Panel de canciones que le gustan al usuario.
  */
 public class MeGustasPanel extends JPanel {
 
     private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
+    private final Consumer<Cancion> onMeGusta;
     private final String            idUsuario;
 
-    public MeGustasPanel(Consumer<Cancion> onPlay, String idUsuario) {
-        this.onPlay     = onPlay;
-        this.idUsuario  = idUsuario;
+    public MeGustasPanel(Consumer<Cancion> onPlay, Consumer<Cancion> onMeGusta, String idUsuario) {
+        this.onPlay    = onPlay;
+        this.onMeGusta = onMeGusta;
+        this.idUsuario = idUsuario;
         this.cancionDAO = new CancionDAO();
 
         setBackground(UITheme.BG);
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
-        add(buildHeader(), BorderLayout.NORTH);
+        cargar();
+    }
 
+    /** Limpia y recarga el panel — llamar tras agregar Me Gusta */
+    public void refrescar() {
+        removeAll();
+        setLayout(new BorderLayout());
+        setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        cargar();
+        revalidate();
+        repaint();
+    }
+
+    private void cargar() {
+        add(buildHeader(), BorderLayout.NORTH);
         List<Cancion> canciones = cancionDAO.obtenerMeGustasUsuario(idUsuario);
         add(buildLista(canciones), BorderLayout.CENTER);
     }
@@ -98,7 +125,7 @@ public class MeGustasPanel extends JPanel {
             int i = 1;
             for (Cancion c : canciones) {
                 final Cancion cancion = c;
-                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario);
+                SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onMeGusta.accept(cancion));
                 row.setAlignmentX(Component.LEFT_ALIGNMENT);
                 lista.add(row);
                 lista.add(Box.createVerticalStrut(2));

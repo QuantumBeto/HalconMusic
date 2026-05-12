@@ -1,5 +1,24 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
 import com.halconmusic.dao.AlbumDAO;
 import com.halconmusic.dao.ArtistaDAO;
 import com.halconmusic.dao.CancionDAO;
@@ -9,11 +28,6 @@ import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.RoundedPanel;
 import com.halconmusic.ui.components.SongRow;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Panel de inicio — Muestra artistas seguidos, álbumes recientes y escuchado recientemente.
@@ -201,10 +215,7 @@ public class HomePanel extends JPanel {
         int i = 1;
         for (Cancion c : historial) {
             final Cancion cancion = c;
-            // Pasa idUsuario → SongRow mostrará el botón ♥ para Me Gusta (Req. 5)
-            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario);
-            row.setAlignmentX(Component.LEFT_ALIGNMENT);
-            p.add(row);
+            p.add(new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onPlay.accept(cancion)));
             p.add(Box.createVerticalStrut(2));
         }
 

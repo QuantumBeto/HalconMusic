@@ -1,38 +1,52 @@
 package com.halconmusic;
 
-import com.halconmusic.dao.HistorialDAO; // ← NUEVO
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Dimension;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+
+import com.halconmusic.dao.HistorialDAO;
 import com.halconmusic.db.ConexionDB;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.PlayerBar;
 import com.halconmusic.ui.components.Sidebar;
-import com.halconmusic.ui.panels.*;
-
-import javax.swing.*;
-import java.awt.*;
+import com.halconmusic.ui.panels.AlbumesPanel;
+import com.halconmusic.ui.panels.ArtistasPanel;
+import com.halconmusic.ui.panels.BuscarPanel;
+import com.halconmusic.ui.panels.CancionesPanel;
+import com.halconmusic.ui.panels.HomePanel;
+import com.halconmusic.ui.panels.MeGustasPanel;
+import com.halconmusic.ui.panels.ResumenPanel;
 
 /**
  * Ventana principal de HalconMusic.
  * Arquitectura: Sidebar → ContentArea → PlayerBar
- *
- * Navegación controlada por CardLayout — sin instanciar paneles
- * innecesariamente.
  */
 public class App extends JFrame {
 
-    // Usuario activo — en una app real vendría del login
     private static final String ID_USUARIO = "US001";
     private static final String NOMBRE_USR = "Alejandro";
-    private static final String TIPO_USR = "Premium ✦";
+    private static final String TIPO_USR   = "Premium ✦";
 
-    private JPanel contentArea;
-    private CardLayout cardLayout;
-    private PlayerBar playerBar;
-    private HistorialDAO historialDAO; // ← NUEVO
+    private JPanel        contentArea;
+    private CardLayout    cardLayout;
+    private PlayerBar     playerBar;
+    private HistorialDAO  historialDAO;
+
+    // Referencias para poder hacer refresh
+    private ResumenPanel  resumenPanel;
+    private MeGustasPanel meGustasPanel;
 
     public App() {
         super("HalconMusic");
-        historialDAO = new HistorialDAO(); // ← NUEVO
+        historialDAO = new HistorialDAO();
         configurarVentana();
         construirUI();
         setVisible(true);
@@ -48,49 +62,52 @@ public class App extends JFrame {
 
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            UIManager.put("Panel.background", UITheme.BG);
-            UIManager.put("ScrollPane.background", UITheme.BG);
-            UIManager.put("Viewport.background", UITheme.BG);
-            UIManager.put("ScrollBar.thumb", UITheme.SURFACE);
+            UIManager.put("Panel.background",          UITheme.BG);
+            UIManager.put("ScrollPane.background",     UITheme.BG);
+            UIManager.put("Viewport.background",       UITheme.BG);
+            UIManager.put("ScrollBar.thumb",           UITheme.SURFACE);
             UIManager.put("ScrollBar.thumbDarkShadow", UITheme.SURFACE);
-            UIManager.put("TextField.background", UITheme.SURFACE);
-            UIManager.put("TextField.foreground", UITheme.TEXT);
+            UIManager.put("TextField.background",      UITheme.SURFACE);
+            UIManager.put("TextField.foreground",      UITheme.TEXT);
             UIManager.put("TextField.caretForeground", UITheme.ACCENT);
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
     }
 
     private void construirUI() {
         setLayout(new BorderLayout());
 
-        // ── Sidebar ───────────────────────────────────────
+        // Sidebar
         Sidebar sidebar = new Sidebar(this::navegar, NOMBRE_USR, TIPO_USR);
 
-        // ── ContentArea (CardLayout) ──────────────────────
-        cardLayout = new CardLayout();
+        // ContentArea
+        cardLayout  = new CardLayout();
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(UITheme.BG);
 
-        // Registrar todos los paneles
-        // ↓ SongRow ahora recibe idUsuario para el botón ♥
+        // Paneles — ResumenPanel y MeGustasPanel guardados para refresh
         contentArea.add(wrapScroll(new HomePanel(this::reproducir, ID_USUARIO)), "home");
-        contentArea.add(new BuscarPanel(this::reproducir, ID_USUARIO), "buscar"); // ← pasa ID_USUARIO
-        contentArea.add(wrapScroll(new ResumenPanel(this::reproducir, ID_USUARIO)), "historial");
-        contentArea.add(new MeGustasPanel(this::reproducir, ID_USUARIO), "megustas");
+        contentArea.add(new BuscarPanel(this::reproducir, this::agregarMeGusta, ID_USUARIO), "buscar");
+
+        resumenPanel = new ResumenPanel(this::reproducir, this::agregarMeGusta, ID_USUARIO);
+        contentArea.add(wrapScroll(resumenPanel), "historial");
+
+        meGustasPanel = new MeGustasPanel(this::reproducir, this::agregarMeGusta, ID_USUARIO);
+        contentArea.add(meGustasPanel, "megustas");
+
         contentArea.add(new ArtistasPanel(), "artistas");
         contentArea.add(new AlbumesPanel(this::reproducir), "albumes");
-        contentArea.add(new CancionesPanel(this::reproducir, ID_USUARIO), "canciones"); // ← pasa ID_USUARIO
+        contentArea.add(new CancionesPanel(this::reproducir, this::agregarMeGusta, ID_USUARIO), "canciones");
 
-        // ── PlayerBar (inferior) ──────────────────────────
+        // PlayerBar
         playerBar = new PlayerBar();
 
-        // ── Estructura principal ──────────────────────────
+        // Estructura principal
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, contentArea);
         split.setDividerSize(0);
         split.setEnabled(false);
         split.setBorder(null);
 
-        add(split, BorderLayout.CENTER);
+        add(split,     BorderLayout.CENTER);
         add(playerBar, BorderLayout.SOUTH);
 
         cardLayout.show(contentArea, "home");
@@ -102,14 +119,25 @@ public class App extends JFrame {
     }
 
     /**
-     * Reproduce la canción en el PlayerBar Y la guarda automáticamente
-     * en la tabla HISTORIAL_CANCIONES. — Req. 4 cumplido.
+     * Reproduce la canción y guarda automáticamente en historial.
+     * Luego refresca el panel de historial.
      */
     private void reproducir(Cancion cancion) {
         playerBar.reproducir(cancion);
+        new Thread(() -> {
+            historialDAO.registrarEnHistorial(ID_USUARIO, cancion.getIdCancion());
+            SwingUtilities.invokeLater(() -> resumenPanel.refrescar());
+        }).start();
+    }
 
-        // ✅ NUEVO: guardar en historial automáticamente al reproducir
-        new Thread(() -> historialDAO.registrarEnHistorial(ID_USUARIO, cancion.getIdCancion())).start();
+    /**
+     * Agrega la canción a Me Gusta y refresca el panel de Me Gusta.
+     */
+    private void agregarMeGusta(Cancion cancion) {
+        new Thread(() -> {
+            historialDAO.agregarMeGusta(ID_USUARIO, cancion.getIdCancion());
+            SwingUtilities.invokeLater(() -> meGustasPanel.refrescar());
+        }).start();
     }
 
     private JScrollPane wrapScroll(JPanel panel) {
