@@ -1,12 +1,29 @@
 package com.halconmusic.ui.components;
 
-import com.halconmusic.ui.UITheme;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.List;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+
+import com.halconmusic.ui.UITheme;
 
 /**
  * Sidebar izquierdo con navegación y lista de playlists.
@@ -77,10 +94,10 @@ public class Sidebar extends JPanel {
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.add(navLabel("Menú"));
-        p.add(navItem("home",     "⌂", "Inicio"));
-        p.add(navItem("buscar",   "⌕", "Buscar"));
-        p.add(navItem("historial","⟳", "Historial"));
-        p.add(navItem("megustas", "♥", "Me gusta"));
+        p.add(navItem("home",      "⌂", "Inicio"));
+        p.add(navItem("buscar",    "⌕", "Buscar"));
+        p.add(navItem("historial", "◷", "Historial"));
+        p.add(navItem("megustas",  "♥", "Me gusta"));
         return p;
     }
 
@@ -89,9 +106,9 @@ public class Sidebar extends JPanel {
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.add(navLabel("Biblioteca"));
-        p.add(navItem("artistas",  "♟", "Artistas"));
-        p.add(navItem("albumes",   "◉", "Álbumes"));
-        p.add(navItem("canciones", "♩", "Canciones"));
+        p.add(navItem("artistas",  "◎", "Artistas"));
+        p.add(navItem("albumes",   "▣", "Álbumes"));
+        p.add(navItem("canciones", "♫", "Canciones"));
         return p;
     }
 
@@ -170,13 +187,23 @@ public class Sidebar extends JPanel {
     }
 
     private JPanel navItem(String view, String icon, String label) {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 8));
-        p.setOpaque(false);
+        // Usamos un panel que siempre pinta su fondo — evita el "fantasma" en hover
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 8)) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setColor(getBackground());
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        p.setBackground(UITheme.SIDEBAR);  // fondo base = mismo que sidebar
+        p.setOpaque(false);                 // dejamos que nuestro paintComponent maneje el fondo
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         JLabel iconLbl  = new JLabel(icon);
-        iconLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        iconLbl.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 14));
         JLabel labelLbl = new JLabel(label);
         labelLbl.setFont(UITheme.FONT_BODY);
 
@@ -192,15 +219,20 @@ public class Sidebar extends JPanel {
                 if (!view.equals(currentView)) {
                     iconLbl.setForeground(UITheme.TEXT);
                     labelLbl.setForeground(UITheme.TEXT);
-                    p.setBackground(UITheme.HOVER);
-                    p.setOpaque(true);
+                    p.setBackground(new Color(
+                        UITheme.SIDEBAR.getRed(),
+                        UITheme.SIDEBAR.getGreen(),
+                        UITheme.SIDEBAR.getBlue()
+                    ).brighter());
+                    p.repaint();
                 }
             }
             @Override public void mouseExited(MouseEvent e) {
                 if (!view.equals(currentView)) {
                     iconLbl.setForeground(UITheme.MUTED);
                     labelLbl.setForeground(UITheme.MUTED);
-                    p.setOpaque(false);
+                    p.setBackground(UITheme.SIDEBAR);
+                    p.repaint();
                 }
             }
             @Override public void mouseClicked(MouseEvent e) {
