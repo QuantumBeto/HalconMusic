@@ -1,11 +1,11 @@
 package com.halconmusic.dao;
 
-import com.halconmusic.db.ConexionDB;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
+import com.halconmusic.db.ConexionDB;
 
 /**
  * DAO para registrar canciones en el Historial y en MeGustas automáticamente.
@@ -197,5 +197,3 @@ public class HistorialDAO {
         }
     }
 }
-
-m
