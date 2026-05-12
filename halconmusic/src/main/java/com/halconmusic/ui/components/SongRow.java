@@ -40,12 +40,12 @@ public class SongRow extends JPanel {
         setPreferredSize(new Dimension(0, 52));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Número
+        // ── Número ──────────────────────────────────────
         JLabel lblNum = label(String.valueOf(numero), UITheme.MUTED, UITheme.FONT_BODY);
         lblNum.setPreferredSize(new Dimension(30, 36));
         lblNum.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // Thumb (portada pequeña)
+        // ── Portada (thumb) ──────────────────────────────
         JPanel thumb = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -66,7 +66,7 @@ public class SongRow extends JPanel {
         thumb.setOpaque(false);
         thumb.setPreferredSize(new Dimension(36, 36));
 
-        // Info (título + artista)
+        // ── Info (título + artista) ──────────────────────
         JPanel info = new JPanel(new GridLayout(2, 1, 0, 1));
         info.setOpaque(false);
         JLabel lblTitle  = label(cancion.getNombre(), UITheme.TEXT, UITheme.FONT_BODY);
@@ -77,10 +77,10 @@ public class SongRow extends JPanel {
         // Género
         JLabel lblGenero = label(cancion.getGenero(), UITheme.MUTED, UITheme.FONT_SMALL);
 
-        // Año
+        // ── Año ──────────────────────────────────────────
         JLabel lblAnio = label(String.valueOf(cancion.getFecha()), UITheme.MUTED, UITheme.FONT_SMALL);
 
-        // Duración
+        // ── Duración ─────────────────────────────────────
         JLabel lblDur = label(cancion.getDuracionFormateada(), UITheme.MUTED, UITheme.FONT_SMALL);
         lblDur.setHorizontalAlignment(SwingConstants.RIGHT);
 
@@ -118,9 +118,9 @@ public class SongRow extends JPanel {
 
         // Layout
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(0, 4, 0, 4);
-        gbc.fill   = GridBagConstraints.BOTH;
-        gbc.gridy  = 0;
+        gbc.insets  = new Insets(0, 4, 0, 4);
+        gbc.fill    = GridBagConstraints.BOTH;
+        gbc.gridy   = 0;
         gbc.weighty = 1;
 
         gbc.gridx = 0; gbc.weightx = 0;   add(lblNum,    gbc);
@@ -135,7 +135,10 @@ public class SongRow extends JPanel {
         addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { setBackground(UITheme.HOVER); repaint(); }
             @Override public void mouseExited (MouseEvent e) { setBackground(null);          repaint(); }
-            @Override public void mouseClicked(MouseEvent e) { if (onPlay != null) onPlay.run(); }
+            @Override public void mouseClicked(MouseEvent e) {
+                // Solo reproducir si el clic no fue en el corazón
+                if (e.getSource() == SongRow.this && onPlay != null) onPlay.run();
+            }
         });
     }
 

@@ -34,11 +34,11 @@ import com.halconmusic.ui.components.SongRow;
  */
 public class HomePanel extends JPanel {
 
-    private final ArtistaDAO       artistaDAO;
-    private final AlbumDAO         albumDAO;
-    private final CancionDAO       cancionDAO;
+    private final ArtistaDAO        artistaDAO;
+    private final AlbumDAO          albumDAO;
+    private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
-    private final String           idUsuario;
+    private final String            idUsuario;
 
     public HomePanel(Consumer<Cancion> onPlay, String idUsuario) {
         this.onPlay     = onPlay;
@@ -55,23 +55,19 @@ public class HomePanel extends JPanel {
     }
 
     private void cargar() {
-        // Hero Banner
         add(buildHero());
         add(Box.createVerticalStrut(28));
 
-        // Artistas seguidos
         add(sectionHeader("Artistas"));
         add(Box.createVerticalStrut(12));
         add(buildArtistasGrid());
         add(Box.createVerticalStrut(28));
 
-        // Álbumes recientes
         add(sectionHeader("Álbumes recientes"));
         add(Box.createVerticalStrut(12));
         add(buildAlbumesGrid());
         add(Box.createVerticalStrut(28));
 
-        // Escuchado recientemente
         add(sectionHeader("Escuchado recientemente"));
         add(Box.createVerticalStrut(12));
         add(buildHistorialReciente());
@@ -84,7 +80,7 @@ public class HomePanel extends JPanel {
         hero.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
 
         JLabel lblLabel = label("DESTACADO DE LA SEMANA", UITheme.ACCENT, UITheme.FONT_LABEL);
-        JLabel lblTitle = label("Tu resumen semanal está listo", UITheme.TEXT,  UITheme.FONT_TITLE);
+        JLabel lblTitle = label("Tu resumen semanal está listo",  UITheme.TEXT,  UITheme.FONT_TITLE);
         JLabel lblSub   = label("Descubre tu género favorito y tus artistas más escuchados.", UITheme.MUTED, UITheme.FONT_BODY);
 
         hero.add(lblLabel);
@@ -101,11 +97,7 @@ public class HomePanel extends JPanel {
         JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
         grid.setOpaque(false);
         grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
-
-        for (Artista a : artistas) {
-            JPanel card = buildArtistCard(a);
-            grid.add(card);
-        }
+        for (Artista a : artistas) grid.add(buildArtistCard(a));
         return grid;
     }
 
@@ -126,7 +118,6 @@ public class HomePanel extends JPanel {
         card.setPreferredSize(new Dimension(140, 185));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Imagen circular
         JPanel img = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -149,15 +140,11 @@ public class HomePanel extends JPanel {
         img.setPreferredSize(new Dimension(120, 120));
         img.setMaximumSize(new Dimension(120, 120));
 
-        JLabel lblNombre = label(a.getNombre(),          UITheme.TEXT,  UITheme.FONT_BODY);
-        JLabel lblGenero = label(a.getGeneroPrincipal(), UITheme.MUTED, UITheme.FONT_SMALL);
-        JLabel lblCanciones = label(a.getTotalCanciones() + " canciones", UITheme.ACCENT, UITheme.FONT_SMALL);
-
         card.add(img);
         card.add(Box.createVerticalStrut(8));
-        card.add(lblNombre);
-        card.add(lblGenero);
-        card.add(lblCanciones);
+        card.add(label(a.getNombre(),           UITheme.TEXT,  UITheme.FONT_BODY));
+        card.add(label(a.getGeneroPrincipal(),  UITheme.MUTED, UITheme.FONT_SMALL));
+        card.add(label(a.getTotalCanciones() + " canciones", UITheme.ACCENT, UITheme.FONT_SMALL));
 
         return card;
     }
@@ -167,10 +154,7 @@ public class HomePanel extends JPanel {
         JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
         grid.setOpaque(false);
         grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
-
-        for (Album al : albumes) {
-            grid.add(buildAlbumCard(al));
-        }
+        for (Album al : albumes) grid.add(buildAlbumCard(al));
         return grid;
     }
 
@@ -214,13 +198,14 @@ public class HomePanel extends JPanel {
 
         card.add(img);
         card.add(Box.createVerticalStrut(8));
-        card.add(label(al.getTitulo(),         UITheme.TEXT,  UITheme.FONT_BODY));
-        card.add(label(al.getNombreArtista(),  UITheme.MUTED, UITheme.FONT_SMALL));
+        card.add(label(al.getTitulo(),               UITheme.TEXT,  UITheme.FONT_BODY));
+        card.add(label(al.getNombreArtista(),         UITheme.MUTED, UITheme.FONT_SMALL));
         card.add(label(String.valueOf(al.getFecha()), UITheme.ACCENT, UITheme.FONT_SMALL));
 
         return card;
     }
 
+    /** Req. 4 + 5: historial reciente con botón ♥ en cada fila */
     private JPanel buildHistorialReciente() {
         List<Cancion> historial = cancionDAO.obtenerHistorialUsuario(idUsuario);
         JPanel p = new JPanel();
@@ -233,6 +218,14 @@ public class HomePanel extends JPanel {
             p.add(new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onPlay.accept(cancion)));
             p.add(Box.createVerticalStrut(2));
         }
+
+        if (historial.isEmpty()) {
+            JLabel vacio = new JLabel("Aún no hay canciones en tu historial.");
+            vacio.setFont(UITheme.FONT_BODY);
+            vacio.setForeground(UITheme.MUTED);
+            p.add(vacio);
+        }
+
         return p;
     }
 

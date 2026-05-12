@@ -98,6 +98,43 @@ public class CancionDAO {
         return lista;
     }
 
+
+    /**
+     * Req. 1 — BUSCADOR: busca canciones cuyo NOMBRE inicia con el término dado.
+     * SQL: UPPER(C.NOMBRE) LIKE UPPER('termino%')  ← sin % al inicio = "starts with"
+     */
+    public List<Cancion> buscarPorInicio(String termino) {
+        List<Cancion> lista = new ArrayList<>();
+
+        String sql = """
+            SELECT C.ID_CANCION,
+                   C.NOMBRE,
+                   C.GENERO,
+                   A.NOMBRE   AS ARTISTA,
+                   C.FT,
+                   C.PORTADA,
+                   C.EMOCION,
+                   C.DURACION_SEG,
+                   C.FECHA
+            FROM CANCIONES C
+            JOIN ARTISTAS_CANCIONES AC ON C.ID_CANCION = AC.ID_CANCION
+            JOIN ARTISTAS A            ON AC.ID_ARTISTA = A.ID_ARTISTA
+            WHERE UPPER(C.NOMBRE) LIKE UPPER(?)
+            ORDER BY UPPER(C.NOMBRE)
+            """;
+
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, termino + "%");   // starts-with
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapearCancion(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error en CancionDAO.buscarPorInicio: " + e.getMessage());
+        }
+
+        return lista;
+    }
+
     /**
      * Obtiene canciones de un álbum específico.
      * SQL: JOIN ALBUMES_CANCIONES

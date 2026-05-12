@@ -107,7 +107,6 @@ public class MeGustasPanel extends JPanel {
         hero.add(Box.createVerticalStrut(4));
         hero.add(lblTitle);
         hero.add(lblSub);
-
         p.add(hero);
         return p;
     }
@@ -118,7 +117,7 @@ public class MeGustasPanel extends JPanel {
         lista.setLayout(new BoxLayout(lista, BoxLayout.Y_AXIS));
 
         if (canciones.isEmpty()) {
-            JLabel vacio = new JLabel("Aún no tienes canciones marcadas como favoritas.");
+            JLabel vacio = new JLabel("Aún no tienes canciones marcadas como favoritas. Usa el botón ♥ en cualquier canción.");
             vacio.setFont(UITheme.FONT_BODY);
             vacio.setForeground(UITheme.MUTED);
             lista.add(vacio);
