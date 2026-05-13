@@ -115,7 +115,6 @@ public class BuscarPanel extends JPanel {
         searchBox.add(lupa,  BorderLayout.WEST);
         searchBox.add(field, BorderLayout.CENTER);
 
-        p.add(headPanel,  BorderLayout.NORTH);
         p.add(searchBox,  BorderLayout.CENTER);
         return p;
     }
