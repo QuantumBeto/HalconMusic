@@ -38,10 +38,12 @@ public class HomePanel extends JPanel {
     private final AlbumDAO          albumDAO;
     private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
+    private final Consumer<Cancion> onLike;
     private final String            idUsuario;
 
-    public HomePanel(Consumer<Cancion> onPlay, String idUsuario) {
+    public HomePanel(Consumer<Cancion> onPlay, Consumer<Cancion> onLike, String idUsuario) {
         this.onPlay     = onPlay;
+        this.onLike     = onLike;
         this.idUsuario  = idUsuario;
         this.artistaDAO = new ArtistaDAO();
         this.albumDAO   = new AlbumDAO();
@@ -215,7 +217,7 @@ public class HomePanel extends JPanel {
         int i = 1;
         for (Cancion c : historial) {
             final Cancion cancion = c;
-            p.add(new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onPlay.accept(cancion)));
+            p.add(new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onLike.accept(cancion)));
             p.add(Box.createVerticalStrut(2));
         }
 

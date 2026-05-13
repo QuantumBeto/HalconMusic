@@ -11,10 +11,12 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -24,7 +26,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.AudioService;
@@ -32,15 +33,17 @@ import com.halconmusic.ui.UITheme;
 
 /**
  * Barra de reproducción inferior.
- * - Caracteres Unicode con fuente Segoe UI Symbol (sin emojis)
- * - Botón ♥ Me Gusta funcional
- * - Botones ⏮ ⏭ Skip funcionales (navega la cola de reproducción)
+ * El botón ♥ llama a onMeGusta(cancion) para guardar en BD.
  */
 public class PlayerBar extends JPanel {
 
-    // ── Cola de reproducción ─────────────────────────────
-    private final List<Cancion> cola       = new ArrayList<>();
-    private       int           colaIndex  = -1;
+    // ── Cola ─────────────────────────────────────────────
+    private final List<Cancion> cola      = new ArrayList<>();
+    private       int           colaIndex = -1;
+    private       Cancion       cancionActual;
+
+    // ── Callback externo ─────────────────────────────────
+    private final Consumer<Cancion> onMeGusta;
 
     // ── UI ───────────────────────────────────────────────
     private JLabel  lblTitle;
@@ -58,15 +61,14 @@ public class PlayerBar extends JPanel {
     private boolean liked       = false;
     private int     duracionSeg = 0;
     private int     progSeg     = 0;
-    private Timer   timer;
 
-    // Fuente que soporta caracteres de control
-    private static final Font FONT_CTRL   = new Font("Segoe UI Symbol", Font.PLAIN, 14);
-    private static final Font FONT_PLAY   = new Font("Segoe UI Symbol", Font.PLAIN, 13);
-    private static final Font FONT_HEART  = new Font("Segoe UI Symbol", Font.PLAIN, 16);
-    private static final Font FONT_VOL    = new Font("Segoe UI Symbol", Font.PLAIN, 13);
+    private static final Font FONT_CTRL  = new Font("Segoe UI Symbol", Font.PLAIN, 14);
+    private static final Font FONT_PLAY  = new Font("Segoe UI Symbol", Font.PLAIN, 13);
+    private static final Font FONT_HEART = new Font("Segoe UI Symbol", Font.PLAIN, 17);
 
-    public PlayerBar() {
+    public PlayerBar(Consumer<Cancion> onMeGusta) {
+        this.onMeGusta = onMeGusta;
+
         setPreferredSize(new Dimension(0, UITheme.PLAYER_H));
         setBackground(UITheme.PLAYER);
         setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UITheme.BORDER));
@@ -81,8 +83,9 @@ public class PlayerBar extends JPanel {
     private JPanel buildTrackPanel() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         p.setOpaque(false);
-        p.setPreferredSize(new Dimension(UITheme.SIDEBAR_W, UITheme.PLAYER_H));
+        p.setPreferredSize(new Dimension(UITheme.SIDEBAR_W + 20, UITheme.PLAYER_H));
 
+        // Miniatura
         JPanel thumb = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -90,9 +93,15 @@ public class PlayerBar extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(UITheme.SURFACE);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 7, 7);
-                g2.setColor(UITheme.MUTED);
-                g2.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 18));
-                g2.drawString("\u266A", 10, 28); // ♪
+                if (cancionActual != null && cancionActual.getPortada() != null) {
+                    Shape clip = new java.awt.geom.RoundRectangle2D.Float(0,0,getWidth(),getHeight(),7,7);
+                    g2.setClip(clip);
+                    drawCover(g2, cancionActual.getPortada(), 0, 0, getWidth(), getHeight());
+                } else {
+                    g2.setColor(UITheme.MUTED);
+                    g2.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 18));
+                    g2.drawString("\u266A", 10, 28);
+                }
                 g2.dispose();
             }
         };
@@ -101,12 +110,12 @@ public class PlayerBar extends JPanel {
 
         JPanel info = new JPanel(new GridLayout(2, 1, 0, 1));
         info.setOpaque(false);
-        lblTitle  = makeLabel("Sin reproducci\u00F3n", UITheme.TEXT,  UITheme.FONT_BODY);
-        lblArtist = makeLabel("",                       UITheme.MUTED, UITheme.FONT_SMALL);
+        lblTitle  = lbl("Sin reproducción", UITheme.TEXT,  UITheme.FONT_BODY);
+        lblArtist = lbl("",                  UITheme.MUTED, UITheme.FONT_SMALL);
         info.add(lblTitle);
         info.add(lblArtist);
 
-        // Botón ♥ Me Gusta junto al track info
+        // Botón ♥ — llama agregarMeGusta al activarse
         btnHeart = new JLabel("\u2661"); // ♡ vacío
         btnHeart.setFont(FONT_HEART);
         btnHeart.setForeground(UITheme.MUTED);
@@ -134,19 +143,15 @@ public class PlayerBar extends JPanel {
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
 
-        // Botones de control
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         btns.setOpaque(false);
 
-        // ⏮ Anterior
         btnPrev = ctrlBtn("\u23EE"); // ⏮
         btnPrev.addActionListener(e -> skipAnterior());
 
-        // ⏭ Siguiente
         btnNext = ctrlBtn("\u23ED"); // ⏭
         btnNext.addActionListener(e -> skipSiguiente());
 
-        // ▶ / ⏸ Play/Pause
         btnPlay = new JButton() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -156,7 +161,6 @@ public class PlayerBar extends JPanel {
                 g2.setColor(UITheme.BG);
                 g2.setFont(FONT_PLAY);
                 FontMetrics fm = g2.getFontMetrics();
-                // ▶ play  ⏸ pause (usando Segoe UI Symbol)
                 String t = isPlaying ? "\u23F8" : "\u25B6";
                 g2.drawString(t, (getWidth() - fm.stringWidth(t)) / 2 + 1,
                               (getHeight() + fm.getAscent()) / 2 - 3);
@@ -174,15 +178,14 @@ public class PlayerBar extends JPanel {
         btns.add(btnPlay);
         btns.add(btnNext);
 
-        // Tiempo y barra de progreso
-        lblCurrent = makeLabel("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
-        lblTotal   = makeLabel("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
+        lblCurrent = lbl("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
+        lblTotal   = lbl("0:00", UITheme.MUTED, UITheme.FONT_SMALL);
 
-        progTrack = new JPanel(new BorderLayout()) {
+        progTrack = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(0xFF, 0xFF, 0xFF, 25));
+                g2.setColor(new Color(255, 255, 255, 25));
                 g2.fillRoundRect(0, getHeight()/2 - 3, getWidth(), 6, 3, 3);
                 if (duracionSeg > 0) {
                     int w = (int)((double) progSeg / duracionSeg * getWidth());
@@ -201,28 +204,13 @@ public class PlayerBar extends JPanel {
         MouseAdapter seekListener = new MouseAdapter() {
             private void seek(MouseEvent e) {
                 if (duracionSeg <= 0) return;
-                double pct    = Math.max(0, Math.min(1, (double) e.getX() / progTrack.getWidth()));
-                progSeg       = (int)(pct * duracionSeg);
+                double pct = Math.max(0, Math.min(1, (double) e.getX() / progTrack.getWidth()));
+                progSeg = (int)(pct * duracionSeg);
                 actualizarProgreso();
                 AudioService.getInstance().buscarPosicion(progSeg);
             }
             @Override public void mousePressed(MouseEvent e)  { seek(e); }
-            @Override public void mouseDragged(MouseEvent e)  {
-                seek(e);
-                if (duracionSeg > 0) {
-                    double pct = Math.max(0, Math.min(1, (double) e.getX() / progTrack.getWidth()));
-                    int seg = (int)(pct * duracionSeg);
-                    lblCurrent.setText(String.format("%d:%02d", seg/60, seg%60));
-                }
-            }
-            @Override public void mouseEntered(MouseEvent e) {
-                progTrack.setPreferredSize(new Dimension(360, 22));
-                progTrack.getParent().revalidate();
-            }
-            @Override public void mouseExited(MouseEvent e) {
-                progTrack.setPreferredSize(new Dimension(360, 18));
-                progTrack.getParent().revalidate();
-            }
+            @Override public void mouseDragged(MouseEvent e)  { seek(e); }
         };
         progTrack.addMouseListener(seekListener);
         progTrack.addMouseMotionListener(seekListener);
@@ -238,7 +226,6 @@ public class PlayerBar extends JPanel {
         p.add(Box.createVerticalStrut(4));
         p.add(progRow);
         p.add(Box.createVerticalGlue());
-
         return p;
     }
 
@@ -248,33 +235,20 @@ public class PlayerBar extends JPanel {
         p.setOpaque(false);
         p.setPreferredSize(new Dimension(180, UITheme.PLAYER_H));
 
-        // Icono de volumen con Segoe UI Symbol
-        JLabel volIcon = makeLabel("\uD83D\uDD0A", UITheme.MUTED, FONT_VOL);
-        // Usamos caracteres ASCII seguros como fallback visual
-        JLabel volIconSafe = new JLabel("\u266A"); // ♪ como placeholder
-        volIconSafe.setFont(FONT_VOL);
-        volIconSafe.setForeground(UITheme.MUTED);
-
-        // Label de volumen con símbolo seguro
-        JLabel lblVol = new JLabel("\u25B7\u25B7"); // ▷▷
-        lblVol.setFont(FONT_VOL);
+        JLabel lblVol = new JLabel("\u25B7\u25B7");
+        lblVol.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 13));
         lblVol.setForeground(UITheme.MUTED);
 
         JSlider volSlider = new JSlider(0, 100, 65);
         volSlider.setOpaque(false);
         volSlider.setPreferredSize(new Dimension(80, 20));
         volSlider.setForeground(UITheme.ACCENT);
-        volSlider.setPaintTrack(true);
         volSlider.setPaintTicks(false);
         volSlider.setPaintLabels(false);
-
         volSlider.addChangeListener(e -> {
             double vol = volSlider.getValue() / 100.0;
             AudioService.getInstance().setVolumen(vol);
-            // Actualiza ícono según nivel
-            if (vol == 0)       lblVol.setText("\u25A1\u25A1"); // □□ silencio
-            else if (vol < 0.5) lblVol.setText("\u25B7\u25B6"); // ▷▶ bajo
-            else                lblVol.setText("\u25B6\u25B6"); // ▶▶ alto
+            lblVol.setText(vol == 0 ? "\u25A1\u25A1" : vol < 0.5 ? "\u25B7\u25B6" : "\u25B6\u25B6");
         });
 
         p.add(lblVol);
@@ -283,12 +257,8 @@ public class PlayerBar extends JPanel {
     }
 
     // ── API pública ───────────────────────────────────────
-
-    /**
-     * Reproduce una canción y la agrega a la cola de reproducción.
-     */
     public void reproducir(Cancion c) {
-        // Agrega a la cola si no está ya al final
+        cancionActual = c;
         if (cola.isEmpty() || !cola.get(cola.size()-1).getIdCancion().equals(c.getIdCancion())) {
             cola.add(c);
         }
@@ -301,10 +271,17 @@ public class PlayerBar extends JPanel {
         lblTotal.setText(c.getDuracionFormateada());
         isPlaying   = true;
         liked       = false;
-        btnHeart.setText("\u2661"); // ♡ vacío al cambiar canción
+        btnHeart.setText("\u2661");
         btnHeart.setForeground(UITheme.MUTED);
 
-        if (timer != null) timer.stop();
+        // Refresca miniatura
+        SwingUtilities.invokeLater(() -> {
+            if (getComponent(0) instanceof JPanel trackPanel) {
+                trackPanel.repaint();
+            }
+            repaint();
+        });
+
         actualizarProgreso();
         btnPlay.repaint();
 
@@ -315,86 +292,66 @@ public class PlayerBar extends JPanel {
                 progSeg   = 0;
                 actualizarProgreso();
                 btnPlay.repaint();
-                // Auto-skip al siguiente si hay más en la cola
                 skipSiguiente();
             }),
-            (segundosActuales) -> SwingUtilities.invokeLater(() -> {
-                progSeg = (int) Math.floor(segundosActuales);
+            (seg) -> SwingUtilities.invokeLater(() -> {
+                progSeg = (int) Math.floor(seg);
                 actualizarProgreso();
             })
         );
     }
 
     // ── Acciones internas ─────────────────────────────────
-
     private void togglePlay() {
         AudioService audio = AudioService.getInstance();
-        if (isPlaying) {
-            audio.pausar();
-            if (timer != null) timer.stop();
-            isPlaying = false;
-        } else {
-            audio.reanudar();
-            isPlaying = true;
-        }
+        if (isPlaying) { audio.pausar();   isPlaying = false; }
+        else           { audio.reanudar(); isPlaying = true; }
         btnPlay.repaint();
     }
 
+    /**
+     * Alterna el corazón y, si pasa a "gustado",
+     * llama al callback que persiste en BD.
+     */
     private void toggleLike() {
         liked = !liked;
         if (liked) {
-            btnHeart.setText("\u2665"); // ♥ relleno
+            btnHeart.setText("\u2665");  // ♥ relleno
             btnHeart.setForeground(new Color(0xFF, 0x22, 0x55));
+            // Guardar en BD si hay canción reproduciendo y callback registrado
+            if (cancionActual != null && onMeGusta != null) {
+                onMeGusta.accept(cancionActual);
+            }
         } else {
-            btnHeart.setText("\u2661"); // ♡ vacío
+            btnHeart.setText("\u2661");  // ♡ vacío
             btnHeart.setForeground(UITheme.MUTED);
         }
     }
 
-    /**
-     * Salta a la canción anterior en la cola.
-     */
     private void skipAnterior() {
         if (cola.isEmpty()) return;
         if (progSeg > 3) {
-            // Si llevamos más de 3 seg, reinicia la canción actual
             progSeg = 0;
             AudioService.getInstance().buscarPosicion(0);
             actualizarProgreso();
             return;
         }
-        if (colaIndex > 0) {
-            colaIndex--;
-            reproducir(cola.get(colaIndex));
-        }
+        if (colaIndex > 0) { colaIndex--; reproducir(cola.get(colaIndex)); }
     }
 
-    /**
-     * Salta a la siguiente canción en la cola.
-     */
     private void skipSiguiente() {
         if (cola.isEmpty()) return;
-        if (colaIndex < cola.size() - 1) {
-            colaIndex++;
-            reproducir(cola.get(colaIndex));
-        } else {
-            // Fin de la cola — detiene reproducción
-            isPlaying = false;
-            progSeg   = 0;
-            actualizarProgreso();
-            btnPlay.repaint();
-        }
+        if (colaIndex < cola.size() - 1) { colaIndex++; reproducir(cola.get(colaIndex)); }
+        else { isPlaying = false; progSeg = 0; actualizarProgreso(); btnPlay.repaint(); }
     }
 
     private void actualizarProgreso() {
-        if (duracionSeg > 0) {
+        if (duracionSeg > 0)
             lblCurrent.setText(String.format("%d:%02d", progSeg/60, progSeg%60));
-        }
-        SwingUtilities.invokeLater(() -> {
-            if (progTrack != null) progTrack.repaint();
-        });
+        SwingUtilities.invokeLater(() -> { if (progTrack != null) progTrack.repaint(); });
     }
 
+    // ── Helpers ───────────────────────────────────────────
     private JButton ctrlBtn(String text) {
         JButton b = new JButton(text);
         b.setForeground(UITheme.MUTED);
@@ -410,10 +367,24 @@ public class PlayerBar extends JPanel {
         return b;
     }
 
-    private JLabel makeLabel(String text, Color color, Font font) {
-        JLabel l = new JLabel(text);
-        l.setForeground(color);
-        l.setFont(font);
+    private JLabel lbl(String t, Color c, Font f) {
+        JLabel l = new JLabel(t);
+        l.setForeground(c);
+        l.setFont(f);
         return l;
+    }
+
+    /**
+     * Dibuja una imagen manteniendo proporción (cover — rellena sin deformar).
+     */
+    public static void drawCover(Graphics2D g2, java.awt.Image img,
+                                  int x, int y, int w, int h) {
+        int iw = img.getWidth(null);
+        int ih = img.getHeight(null);
+        if (iw <= 0 || ih <= 0) return;
+        double scale = Math.max((double) w / iw, (double) h / ih);
+        int dw = (int) Math.ceil(iw * scale);
+        int dh = (int) Math.ceil(ih * scale);
+        g2.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh, null);
     }
 }

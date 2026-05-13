@@ -22,10 +22,14 @@ public class AlbumesPanel extends JPanel {
     private final AlbumDAO         albumDAO;
     private final CancionDAO       cancionDAO;
     private final Consumer<Cancion> onPlay;
+    private final Consumer<Cancion> onLike;
+    private final String            idUsuario;
     private       JPanel           mainArea;
 
-    public AlbumesPanel(Consumer<Cancion> onPlay) {
+    public AlbumesPanel(Consumer<Cancion> onPlay, Consumer<Cancion> onLike, String idUsuario) {
         this.onPlay     = onPlay;
+        this.onLike     = onLike;
+        this.idUsuario  = idUsuario;
         this.albumDAO   = new AlbumDAO();
         this.cancionDAO = new CancionDAO();
 
@@ -176,7 +180,7 @@ public class AlbumesPanel extends JPanel {
         int i = 1;
         for (Cancion c : canciones) {
             final Cancion cancion = c;
-            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion));
+            SongRow row = new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onLike.accept(cancion));
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
             lista.add(row);
             lista.add(Box.createVerticalStrut(2));
