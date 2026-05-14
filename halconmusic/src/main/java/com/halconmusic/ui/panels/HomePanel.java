@@ -2,22 +2,26 @@ package com.halconmusic.ui.panels;
 
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Shape;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
 
 import com.halconmusic.dao.AlbumDAO;
 import com.halconmusic.dao.ArtistaDAO;
@@ -29,222 +33,257 @@ import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.RoundedPanel;
 import com.halconmusic.ui.components.SongRow;
 
-/**
- * Panel de inicio — Muestra artistas seguidos, álbumes recientes y escuchado recientemente.
- */
 public class HomePanel extends JPanel {
 
     private final ArtistaDAO        artistaDAO;
     private final AlbumDAO          albumDAO;
     private final CancionDAO        cancionDAO;
     private final Consumer<Cancion> onPlay;
-    private final Consumer<Cancion> onLike;
+    private final Consumer<Cancion> onMeGusta;
     private final String            idUsuario;
 
-    public HomePanel(Consumer<Cancion> onPlay, Consumer<Cancion> onLike, String idUsuario) {
-        this.onPlay     = onPlay;
-        this.onLike     = onLike;
-        this.idUsuario  = idUsuario;
-        this.artistaDAO = new ArtistaDAO();
-        this.albumDAO   = new AlbumDAO();
-        this.cancionDAO = new CancionDAO();
+    public HomePanel(Consumer<Cancion> onPlay, Consumer<Cancion> onMeGusta, String idUsuario) {
+        this.onPlay    = onPlay;
+        this.onMeGusta = onMeGusta;
+        this.idUsuario = idUsuario;
+        artistaDAO = new ArtistaDAO();
+        albumDAO   = new AlbumDAO();
+        cancionDAO = new CancionDAO();
 
         setBackground(UITheme.BG);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
-
         cargar();
     }
 
     private void cargar() {
-        add(buildHero());
-        add(Box.createVerticalStrut(28));
-
-        add(sectionHeader("Artistas"));
-        add(Box.createVerticalStrut(12));
-        add(buildArtistasGrid());
-        add(Box.createVerticalStrut(28));
-
-        add(sectionHeader("Álbumes recientes"));
-        add(Box.createVerticalStrut(12));
-        add(buildAlbumesGrid());
-        add(Box.createVerticalStrut(28));
-
-        add(sectionHeader("Escuchado recientemente"));
-        add(Box.createVerticalStrut(12));
-        add(buildHistorialReciente());
+        add(aligned(buildHero()));
+        add(Box.createVerticalStrut(24));
+        add(aligned(secHeader("Artistas")));
+        add(Box.createVerticalStrut(10));
+        add(buildCarrusel(artistaDAO.obtenerTodos(), 190));   // horizontal scroll
+        add(Box.createVerticalStrut(24));
+        add(aligned(secHeader("Álbumes recientes")));
+        add(Box.createVerticalStrut(10));
+        add(buildCarruselAlbumes(albumDAO.obtenerTodos(), 205));
+        add(Box.createVerticalStrut(24));
+        add(aligned(secHeader("Escuchado recientemente")));
+        add(Box.createVerticalStrut(10));
+        add(buildHistorial());
     }
 
-    private JPanel buildHero() {
+    // ── Hero ─────────────────────────────────────────────
+    private RoundedPanel buildHero() {
         RoundedPanel hero = new RoundedPanel(12, new Color(0x1C, 0x16, 0x00));
         hero.setLayout(new BoxLayout(hero, BoxLayout.Y_AXIS));
         hero.setBorder(BorderFactory.createEmptyBorder(28, 28, 28, 28));
-        hero.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
-
-        JLabel lblLabel = label("DESTACADO DE LA SEMANA", UITheme.ACCENT, UITheme.FONT_LABEL);
-        JLabel lblTitle = label("Tu resumen semanal está listo",  UITheme.TEXT,  UITheme.FONT_TITLE);
-        JLabel lblSub   = label("Descubre tu género favorito y tus artistas más escuchados.", UITheme.MUTED, UITheme.FONT_BODY);
-
-        hero.add(lblLabel);
+        hero.setMaximumSize(new Dimension(Integer.MAX_VALUE, 155));
+        hero.add(lbl("DESTACADO DE LA SEMANA",                              UITheme.ACCENT, UITheme.FONT_LABEL));
         hero.add(Box.createVerticalStrut(6));
-        hero.add(lblTitle);
+        hero.add(lbl("Tu resumen semanal está listo",                       UITheme.TEXT,   UITheme.FONT_TITLE));
         hero.add(Box.createVerticalStrut(4));
-        hero.add(lblSub);
-
+        hero.add(lbl("Descubre tu género favorito y tus artistas más escuchados.", UITheme.MUTED, UITheme.FONT_BODY));
         return hero;
     }
 
-    private JPanel buildArtistasGrid() {
-        List<Artista> artistas = artistaDAO.obtenerTodos();
-        JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
-        grid.setOpaque(false);
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
-        for (Artista a : artistas) grid.add(buildArtistCard(a));
-        return grid;
+    // ── Carrusel horizontal genérico para artistas ───────
+    private Component buildCarrusel(List<Artista> artistas, int cardH) {
+        JPanel track = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        track.setOpaque(false);
+        for (Artista a : artistas) track.add(buildArtistCard(a));
+
+        JScrollPane carousel = new JScrollPane(track,
+            JScrollPane.VERTICAL_SCROLLBAR_NEVER,
+            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        carousel.setBorder(null);
+        carousel.setOpaque(false);
+        carousel.getViewport().setOpaque(false);
+        // Scroll horizontal con rueda del ratón (shift+scroll o scroll horizontal)
+        carousel.getViewport().addMouseWheelListener(e -> {
+            JScrollBar bar = carousel.getHorizontalScrollBar();
+            bar.setValue(bar.getValue() + (int)(e.getUnitsToScroll() * 20));
+        });
+        carousel.setMaximumSize(new Dimension(Integer.MAX_VALUE, cardH));
+        carousel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return carousel;
     }
 
+    private Component buildCarruselAlbumes(List<Album> albumes, int cardH) {
+        JPanel track = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        track.setOpaque(false);
+        for (Album al : albumes) track.add(buildAlbumCard(al));
+
+        JScrollPane carousel = new JScrollPane(track,
+            JScrollPane.VERTICAL_SCROLLBAR_NEVER,
+            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        carousel.setBorder(null);
+        carousel.setOpaque(false);
+        carousel.getViewport().setOpaque(false);
+        carousel.getViewport().addMouseWheelListener(e -> {
+            JScrollBar bar = carousel.getHorizontalScrollBar();
+            bar.setValue(bar.getValue() + (int)(e.getUnitsToScroll() * 20));
+        });
+        carousel.setMaximumSize(new Dimension(Integer.MAX_VALUE, cardH));
+        carousel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return carousel;
+    }
+
+    // ── Tarjeta de artista ───────────────────────────────
     private JPanel buildArtistCard(Artista a) {
-        JPanel card = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(UITheme.CARD);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), UITheme.RADIUS, UITheme.RADIUS);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        card.setOpaque(false);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        card.setPreferredSize(new Dimension(140, 185));
-        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JPanel card = roundCard();
+        card.setPreferredSize(new Dimension(148, 188));
 
+        // Imagen circular — siempre cuadrada con clip elíptico
+        int IMG = 124;
         JPanel img = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,   RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,  RenderingHints.VALUE_INTERPOLATION_BILINEAR);
                 g2.setColor(UITheme.SURFACE);
-                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.fillOval(0, 0, IMG, IMG);
                 if (a.getPortada() != null) {
-                    Shape clip = new java.awt.geom.Ellipse2D.Float(0, 0, getWidth(), getHeight());
-                    g2.setClip(clip);
-                    g2.drawImage(a.getPortada(), 0, 0, getWidth(), getHeight(), null);
+                    g2.setClip(new Ellipse2D.Float(0, 0, IMG, IMG));
+                    SongRow.drawCover(g2, a.getPortada(), 0, 0, IMG, IMG);
                 } else {
                     g2.setColor(UITheme.MUTED);
-                    g2.setFont(new Font("Segoe UI", Font.PLAIN, 32));
-                    g2.drawString("♪", 32, 72);
+                    g2.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 32));
+                    g2.drawString("\u266A", 40, 72);
                 }
                 g2.dispose();
             }
         };
         img.setOpaque(false);
-        img.setPreferredSize(new Dimension(120, 120));
-        img.setMaximumSize(new Dimension(120, 120));
+        img.setPreferredSize(new Dimension(IMG, IMG));
+        img.setMinimumSize(new Dimension(IMG, IMG));
+        img.setMaximumSize(new Dimension(IMG, IMG));
+        img.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         card.add(img);
         card.add(Box.createVerticalStrut(8));
-        card.add(label(a.getNombre(),           UITheme.TEXT,  UITheme.FONT_BODY));
-        card.add(label(a.getGeneroPrincipal(),  UITheme.MUTED, UITheme.FONT_SMALL));
-        card.add(label(a.getTotalCanciones() + " canciones", UITheme.ACCENT, UITheme.FONT_SMALL));
-
+        card.add(cardLbl(a.getNombre(),           UITheme.TEXT,   UITheme.FONT_BODY));
+        card.add(cardLbl(a.getGeneroPrincipal(),  UITheme.MUTED,  UITheme.FONT_SMALL));
+        card.add(cardLbl(a.getTotalCanciones() + " canciones", UITheme.ACCENT, UITheme.FONT_SMALL));
         return card;
     }
 
-    private JPanel buildAlbumesGrid() {
-        List<Album> albumes = albumDAO.obtenerTodos();
-        JPanel grid = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
-        grid.setOpaque(false);
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
-        for (Album al : albumes) grid.add(buildAlbumCard(al));
-        return grid;
-    }
-
+    // ── Tarjeta de álbum ─────────────────────────────────
     private JPanel buildAlbumCard(Album al) {
-        JPanel card = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(UITheme.CARD);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), UITheme.RADIUS, UITheme.RADIUS);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        card.setOpaque(false);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        card.setPreferredSize(new Dimension(140, 185));
+        JPanel card = roundCard();
+        card.setPreferredSize(new Dimension(148, 202));
 
+        int IMG = 124;
         JPanel img = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
                 g2.setColor(UITheme.SURFACE);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.fillRoundRect(0, 0, IMG, IMG, 8, 8);
                 if (al.getPortada() != null) {
-                    Shape clip = new java.awt.geom.RoundRectangle2D.Float(0,0,getWidth(),getHeight(),8,8);
-                    g2.setClip(clip);
-                    g2.drawImage(al.getPortada(), 0, 0, getWidth(), getHeight(), null);
+                    g2.setClip(new RoundRectangle2D.Float(0, 0, IMG, IMG, 8, 8));
+                    SongRow.drawCover(g2, al.getPortada(), 0, 0, IMG, IMG);
                 } else {
                     g2.setColor(UITheme.MUTED);
-                    g2.setFont(new Font("Segoe UI", Font.PLAIN, 32));
-                    g2.drawString("◉", 40, 72);
+                    g2.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 32));
+                    g2.drawString("\u25C9", 40, 72);
                 }
                 g2.dispose();
             }
         };
         img.setOpaque(false);
-        img.setPreferredSize(new Dimension(120, 120));
-        img.setMaximumSize(new Dimension(120, 120));
+        img.setPreferredSize(new Dimension(IMG, IMG));
+        img.setMinimumSize(new Dimension(IMG, IMG));
+        img.setMaximumSize(new Dimension(IMG, IMG));
+        img.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         card.add(img);
         card.add(Box.createVerticalStrut(8));
-        card.add(label(al.getTitulo(),               UITheme.TEXT,  UITheme.FONT_BODY));
-        card.add(label(al.getNombreArtista(),         UITheme.MUTED, UITheme.FONT_SMALL));
-        card.add(label(String.valueOf(al.getFecha()), UITheme.ACCENT, UITheme.FONT_SMALL));
-
+        card.add(cardLbl(al.getTitulo(),               UITheme.TEXT,   UITheme.FONT_BODY));
+        card.add(cardLbl(al.getNombreArtista(),         UITheme.MUTED,  UITheme.FONT_SMALL));
+        card.add(cardLbl(String.valueOf(al.getFecha()), UITheme.ACCENT, UITheme.FONT_SMALL));
         return card;
     }
 
-    /** Req. 4 + 5: historial reciente con botón ♥ en cada fila */
-    private JPanel buildHistorialReciente() {
+    // ── Historial reciente — full-width con SongRows ─────
+    private JPanel buildHistorial() {
         List<Cancion> historial = cancionDAO.obtenerHistorialUsuario(idUsuario);
-        JPanel p = new JPanel();
+        // Panel que reporta su ancho = ancho del contenedor (evita colapso en BoxLayout)
+        JPanel p = new JPanel() {
+            @Override public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                Container parent = getParent();
+                if (parent != null) d.width = parent.getWidth() - 48; // insets del HomePanel
+                return d;
+            }
+        };
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-
-        int i = 1;
-        for (Cancion c : historial) {
-            final Cancion cancion = c;
-            p.add(new SongRow(i++, c, () -> onPlay.accept(cancion), idUsuario, () -> onLike.accept(cancion)));
-            p.add(Box.createVerticalStrut(2));
-        }
+        p.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         if (historial.isEmpty()) {
-            JLabel vacio = new JLabel("Aún no hay canciones en tu historial.");
-            vacio.setFont(UITheme.FONT_BODY);
-            vacio.setForeground(UITheme.MUTED);
-            p.add(vacio);
+            JLabel v = new JLabel("Aún no hay canciones en tu historial.");
+            v.setFont(UITheme.FONT_BODY);
+            v.setForeground(UITheme.MUTED);
+            p.add(v);
+        } else {
+            int i = 1;
+            for (Cancion c : historial) {
+                final Cancion cancion = c;
+                SongRow row = new SongRow(i++, c,
+                    () -> onPlay.accept(cancion),
+                    idUsuario,
+                    () -> onMeGusta.accept(cancion));
+                row.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(row);
+                p.add(Box.createVerticalStrut(2));
+            }
         }
-
         return p;
     }
 
     // ── Helpers ───────────────────────────────────────────
-    private JLabel label(String text, Color color, Font font) {
-        JLabel l = new JLabel(text == null ? "" : text);
-        l.setForeground(color);
-        l.setFont(font);
+    private JPanel roundCard() {
+        JPanel card = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(UITheme.CARD);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), UITheme.RADIUS, UITheme.RADIUS);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        card.setOpaque(false);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        return card;
+    }
+
+    private JLabel secHeader(String t) {
+        JLabel l = new JLabel(t);
+        l.setFont(UITheme.FONT_SECTION);
+        l.setForeground(UITheme.TEXT);
+        return l;
+    }
+
+    private JLabel lbl(String t, Color c, Font f) {
+        JLabel l = new JLabel(t == null ? "" : t);
+        l.setForeground(c); l.setFont(f);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }
 
-    private JLabel sectionHeader(String title) {
-        JLabel l = new JLabel(title);
-        l.setFont(UITheme.FONT_SECTION);
-        l.setForeground(UITheme.TEXT);
-        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+    private JLabel cardLbl(String t, Color c, Font f) {
+        JLabel l = new JLabel(t == null ? "" : t);
+        l.setForeground(c); l.setFont(f);
+        l.setAlignmentX(Component.CENTER_ALIGNMENT);
         return l;
+    }
+
+    /** Fuerza LEFT_ALIGNMENT sin crear subclase adicional */
+    private Component aligned(Component comp) {
+        if (comp instanceof JComponent jc) jc.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return comp;
     }
 }
