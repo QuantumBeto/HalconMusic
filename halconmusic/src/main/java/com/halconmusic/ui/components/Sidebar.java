@@ -1,40 +1,25 @@
 package com.halconmusic.ui.components;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.GradientPaint;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.GridLayout;
-import java.awt.RenderingHints;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
+import javax.swing.*;
 
 import com.halconmusic.ui.UITheme;
 
-/**
- * Sidebar izquierdo con navegación y lista de playlists.
- */
 public class Sidebar extends JPanel {
 
     private final Consumer<String> onNavigate;
     private       String           currentView = "home";
+    private final String           tipoRaw;    // "Premium" o "Gratis"
 
-    public Sidebar(Consumer<String> onNavigate, String usuarioNombre, String usuarioTipo) {
+    public Sidebar(Consumer<String> onNavigate, String usuarioNombre,
+                   String usuarioTipo, String tipoRaw) {
         this.onNavigate = onNavigate;
+        this.tipoRaw    = tipoRaw;
+
         setPreferredSize(new Dimension(UITheme.SIDEBAR_W, 0));
         setBackground(UITheme.SIDEBAR);
         setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, UITheme.BORDER));
@@ -47,6 +32,13 @@ public class Sidebar extends JPanel {
         top.add(buildNavSection());
         top.add(buildDivider());
         top.add(buildLibrarySection());
+
+        // ── Sección exclusiva para Artistas (req. 1 y 2) ──────────────
+        if ("Premium".equalsIgnoreCase(tipoRaw)) {
+            top.add(buildDivider());
+            top.add(buildArtistSection());
+        }
+
         top.add(buildDivider());
         top.add(buildPlaylistLabel());
 
@@ -56,11 +48,25 @@ public class Sidebar extends JPanel {
         scrollPlaylists.getViewport().setOpaque(false);
         scrollPlaylists.getVerticalScrollBar().setPreferredSize(new Dimension(4, 0));
 
-        add(top,              BorderLayout.NORTH);
-        add(scrollPlaylists,  BorderLayout.CENTER);
+        add(top,             BorderLayout.NORTH);
+        add(scrollPlaylists, BorderLayout.CENTER);
         add(buildUserBadge(usuarioNombre, usuarioTipo), BorderLayout.SOUTH);
     }
 
+    // ── Sección exclusiva artista ──────────────────────────
+    private JPanel buildArtistSection() {
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.add(navLabel("Gestión Artista"));
+        p.add(navItem("crearArtista", "✚", "Nuevo Artista"));
+        p.add(navItem("crearAlbum",   "✚", "Nuevo Álbum"));
+        p.add(navItem("crearCancion", "✚", "Nueva Canción"));
+        p.add(navItem("resumenGlobal","◉", "Resumen Global"));
+        return p;
+    }
+
+    // ── Logo ──────────────────────────────────────────────
     private JPanel buildLogo() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 14));
         p.setOpaque(false);
@@ -126,7 +132,6 @@ public class Sidebar extends JPanel {
         JPanel p = new JPanel();
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        // Playlists estáticas de ejemplo — se reemplazarán dinámicamente
         String[] playlists = {"Corridos 2024","Reggaeton Hits","Baladas Clásicas",
                               "Pop Internacional","Grupero Mix","Banda Sinaloense",
                               "Corridos Tumbados","Reggaeton Nuevo","Rancheras Eternas"};
@@ -150,13 +155,11 @@ public class Sidebar extends JPanel {
         p.setOpaque(false);
         p.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UITheme.BORDER));
 
-        // Avatar con iniciales
         JPanel avatar = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0, 0, UITheme.ACCENT, getWidth(), getHeight(), UITheme.ACCENT2);
-                g2.setPaint(gp);
+                g2.setColor(UITheme.ACCENT);
                 g2.fillOval(0, 0, getWidth(), getHeight());
                 g2.setColor(UITheme.BG);
                 g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
@@ -187,7 +190,6 @@ public class Sidebar extends JPanel {
     }
 
     private JPanel navItem(String view, String icon, String label) {
-        // Usamos un panel que siempre pinta su fondo — evita el "fantasma" en hover
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 8)) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -197,8 +199,8 @@ public class Sidebar extends JPanel {
                 super.paintComponent(g);
             }
         };
-        p.setBackground(UITheme.SIDEBAR);  // fondo base = mismo que sidebar
-        p.setOpaque(false);                 // dejamos que nuestro paintComponent maneje el fondo
+        p.setBackground(UITheme.SIDEBAR);
+        p.setOpaque(false);
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
@@ -219,20 +221,12 @@ public class Sidebar extends JPanel {
                 if (!view.equals(currentView)) {
                     iconLbl.setForeground(UITheme.TEXT);
                     labelLbl.setForeground(UITheme.TEXT);
-                    p.setBackground(new Color(
-                        UITheme.SIDEBAR.getRed(),
-                        UITheme.SIDEBAR.getGreen(),
-                        UITheme.SIDEBAR.getBlue()
-                    ).brighter());
-                    p.repaint();
                 }
             }
             @Override public void mouseExited(MouseEvent e) {
                 if (!view.equals(currentView)) {
                     iconLbl.setForeground(UITheme.MUTED);
                     labelLbl.setForeground(UITheme.MUTED);
-                    p.setBackground(UITheme.SIDEBAR);
-                    p.repaint();
                 }
             }
             @Override public void mouseClicked(MouseEvent e) {

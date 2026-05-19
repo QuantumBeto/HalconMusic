@@ -13,15 +13,14 @@ import com.halconmusic.ui.panels.*;
 
 public class App extends JFrame {
 
-    private CardLayout    rootLayout;
-    private JPanel        rootPanel;
+    private CardLayout rootLayout;
+    private JPanel     rootPanel;
 
-    // Datos del usuario autenticado
-    private String        idUsuario;
-    private String        nombreUsuario;
-    private String        tipoUsuario;
+    private String idUsuario;
+    private String nombreUsuario;
+    private String tipoDisplay;   // "Artista ✦" | "Oyente"
+    private String tipoRaw;       // "Premium"   | "Gratis"
 
-    // Estructura principal (construida tras el login)
     private JPanel        contentArea;
     private CardLayout    cardLayout;
     private PlayerBar     playerBar;
@@ -37,7 +36,6 @@ public class App extends JFrame {
         setVisible(true);
     }
 
-    // ── Configuración de ventana ──────────────────────────
     private void configurarVentana() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1000, 650));
@@ -57,14 +55,12 @@ public class App extends JFrame {
             UIManager.put("TextField.caretForeground", UITheme.ACCENT);
         } catch (Exception ignored) {}
 
-        // Root card: alterna entre "login" y "app"
         rootLayout = new CardLayout();
         rootPanel  = new JPanel(rootLayout);
         rootPanel.setBackground(UITheme.BG);
         setContentPane(rootPanel);
     }
 
-    // ── Pantalla de login ─────────────────────────────────
     private void mostrarLogin() {
         LoginPanel login = new LoginPanel(this::onLoginExitoso);
         rootPanel.add(login, "login");
@@ -73,26 +69,24 @@ public class App extends JFrame {
     }
 
     private void onLoginExitoso(String[] datos) {
-        // datos = { ID_USUARIO, NOMBRE, TIPO_SUSCRIPCION }
+        // datos = { ID_USUARIO, NOMBRE, TIPO_DISPLAY, TIPO_RAW }
         idUsuario    = datos[0];
         nombreUsuario = datos[1];
-        tipoUsuario  = datos[2];
+        tipoDisplay  = datos[2];
+        tipoRaw      = datos[3];
 
         historialDAO = new HistorialDAO();
         construirUI();
-
         rootLayout.show(rootPanel, "app");
     }
 
-    // ── UI principal ──────────────────────────────────────
     private void construirUI() {
         JPanel appPanel = new JPanel(new BorderLayout());
         appPanel.setBackground(UITheme.BG);
 
-        // Sidebar con el nombre/tipo real del usuario
-        sidebar = new Sidebar(this::navegar, nombreUsuario, tipoUsuario);
+        // Sidebar recibe tipoRaw para mostrar/ocultar sección Artista
+        sidebar = new Sidebar(this::navegar, nombreUsuario, tipoDisplay, tipoRaw);
 
-        // Content area
         cardLayout  = new CardLayout();
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(UITheme.BG);
@@ -110,7 +104,14 @@ public class App extends JFrame {
         contentArea.add(new AlbumesPanel(this::reproducir, this::agregarMeGusta, idUsuario), "albumes");
         contentArea.add(new CancionesPanel(this::reproducir, this::agregarMeGusta, idUsuario), "canciones");
 
-        // PlayerBar — recibe callback Me Gusta para el botón ♥ de la barra
+        // Panel de resumen global (req. 10) — solo artistas lo ven
+        contentArea.add(wrapScroll(new ResumenGlobalPanel()), "resumenGlobal");
+
+        // Paneles de creación (req. 2) — solo para tipo Artista
+        contentArea.add(new CrearArtistaPanel(), "crearArtista");
+        contentArea.add(new CrearAlbumPanel(),   "crearAlbum");
+        contentArea.add(new CrearCancionPanel(), "crearCancion");
+
         playerBar = new PlayerBar(this::agregarMeGusta);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, contentArea);
@@ -127,9 +128,9 @@ public class App extends JFrame {
 
     private void navegar(String vista) {
         cardLayout.show(contentArea, vista);
-        // Refresca paneles dinámicos al navegar a ellos
-        if ("historial".equals(vista)) resumenPanel.refrescar();
-        if ("megustas".equals(vista))  meGustasPanel.refrescar();
+        if ("historial".equals(vista))     resumenPanel.refrescar();
+        if ("megustas".equals(vista))      meGustasPanel.refrescar();
+        if ("resumenGlobal".equals(vista)) { /* ResumenGlobalPanel carga en su constructor */ }
     }
 
     private void reproducir(Cancion cancion) {
@@ -140,7 +141,6 @@ public class App extends JFrame {
         }).start();
     }
 
-    /** Agrega Me Gusta en BD y refresca el panel */
     private void agregarMeGusta(Cancion cancion) {
         new Thread(() -> {
             historialDAO.agregarMeGusta(idUsuario, cancion.getIdCancion());
@@ -155,7 +155,6 @@ public class App extends JFrame {
         scroll.getViewport().setOpaque(false);
         scroll.getVerticalScrollBar().setPreferredSize(new Dimension(6, 0));
         scroll.getVerticalScrollBar().setUnitIncrement(14);
-        // Evita scroll horizontal — todo debe caber en el ancho
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         return scroll;
     }
