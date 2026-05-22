@@ -3,6 +3,7 @@ package com.halconmusic.ui.components;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
+import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -22,41 +23,56 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSlider;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
+import com.halconmusic.dao.CancionDAO;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.AudioService;
 import com.halconmusic.ui.UITheme;
 
 /**
  * Barra de reproducción inferior.
- * El botón ♥ llama a onMeGusta(cancion) para guardar en BD.
+ *
+ * REQ. 11 — Muestra: imagen (portada), audio, letra.
+ *   · Portada: miniatura izquierda.
+ *   · Audio:   AudioService (ya existía).
+ *   · Letra:   botón "♩ Letra" abre JDialog con el texto desde BD (CLOB).
+ *
+ * Nota sobre VIDEO: la tabla CANCIONES almacena solo MUSICA (BLOB audio).
+ *   No existe columna VIDEO. Si en el futuro se agrega, sustituir EMPTY_BLOB()
+ *   por el stream del archivo de video y renderizarlo con JavaFX MediaView.
  */
 public class PlayerBar extends JPanel {
 
-    // ── Cola ─────────────────────────────────────────────
+    // ── Cola ──────────────────────────────────────────────
     private final List<Cancion> cola      = new ArrayList<>();
     private       int           colaIndex = -1;
     private       Cancion       cancionActual;
 
-    // ── Callback externo ─────────────────────────────────
+    // ── Callbacks ─────────────────────────────────────────
     private final Consumer<Cancion> onMeGusta;
+    private final CancionDAO        cancionDAO = new CancionDAO();
 
-    // ── UI ───────────────────────────────────────────────
+    // ── UI ────────────────────────────────────────────────
     private JLabel  lblTitle;
     private JLabel  lblArtist;
     private JButton btnPlay;
     private JButton btnPrev;
     private JButton btnNext;
     private JLabel  btnHeart;
+    private JButton btnLetra;       // ← REQ. 11
     private JLabel  lblCurrent;
     private JLabel  lblTotal;
     private JPanel  progTrack;
+    private JPanel  thumbPanel;     // para repaint de portada
 
-    // ── Estado ───────────────────────────────────────────
+    // ── Estado ────────────────────────────────────────────
     private boolean isPlaying   = false;
     private boolean liked       = false;
     private int     duracionSeg = 0;
@@ -85,8 +101,8 @@ public class PlayerBar extends JPanel {
         p.setOpaque(false);
         p.setPreferredSize(new Dimension(UITheme.SIDEBAR_W + 20, UITheme.PLAYER_H));
 
-        // Miniatura
-        JPanel thumb = new JPanel() {
+        // Portada (REQ. 11 — imagen de la canción)
+        thumbPanel = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -105,8 +121,8 @@ public class PlayerBar extends JPanel {
                 g2.dispose();
             }
         };
-        thumb.setOpaque(false);
-        thumb.setPreferredSize(new Dimension(44, 44));
+        thumbPanel.setOpaque(false);
+        thumbPanel.setPreferredSize(new Dimension(44, 44));
 
         JPanel info = new JPanel(new GridLayout(2, 1, 0, 1));
         info.setOpaque(false);
@@ -115,8 +131,8 @@ public class PlayerBar extends JPanel {
         info.add(lblTitle);
         info.add(lblArtist);
 
-        // Botón ♥ — llama agregarMeGusta al activarse
-        btnHeart = new JLabel("\u2661"); // ♡ vacío
+        // Botón ♥
+        btnHeart = new JLabel("\u2661");
         btnHeart.setFont(FONT_HEART);
         btnHeart.setForeground(UITheme.MUTED);
         btnHeart.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -131,9 +147,23 @@ public class PlayerBar extends JPanel {
             }
         });
 
-        p.add(thumb);
+        // Botón Letra (REQ. 11)
+        btnLetra = new JButton("\u266B Letra");
+        btnLetra.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnLetra.setForeground(UITheme.MUTED);
+        btnLetra.setBackground(UITheme.SURFACE);
+        btnLetra.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
+            BorderFactory.createEmptyBorder(3, 8, 3, 8)));
+        btnLetra.setFocusPainted(false);
+        btnLetra.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnLetra.setEnabled(false);
+        btnLetra.addActionListener(e -> mostrarLetra());
+
+        p.add(thumbPanel);
         p.add(info);
         p.add(btnHeart);
+        p.add(btnLetra);
         return p;
     }
 
@@ -146,10 +176,10 @@ public class PlayerBar extends JPanel {
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         btns.setOpaque(false);
 
-        btnPrev = ctrlBtn("\u23EE"); // ⏮
+        btnPrev = ctrlBtn("\u23EE");
         btnPrev.addActionListener(e -> skipAnterior());
 
-        btnNext = ctrlBtn("\u23ED"); // ⏭
+        btnNext = ctrlBtn("\u23ED");
         btnNext.addActionListener(e -> skipSiguiente());
 
         btnPlay = new JButton() {
@@ -229,7 +259,7 @@ public class PlayerBar extends JPanel {
         return p;
     }
 
-    // ── Extras (derecha) ──────────────────────────────────
+    // ── Extras (derecha) — volumen ────────────────────────
     private JPanel buildExtrasPanel() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         p.setOpaque(false);
@@ -273,12 +303,10 @@ public class PlayerBar extends JPanel {
         liked       = false;
         btnHeart.setText("\u2661");
         btnHeart.setForeground(UITheme.MUTED);
+        btnLetra.setEnabled(true);   // activa botón letra cuando hay canción
 
-        // Refresca miniatura
         SwingUtilities.invokeLater(() -> {
-            if (getComponent(0) instanceof JPanel trackPanel) {
-                trackPanel.repaint();
-            }
+            if (thumbPanel != null) thumbPanel.repaint();
             repaint();
         });
 
@@ -301,6 +329,71 @@ public class PlayerBar extends JPanel {
         );
     }
 
+    // ── REQ. 11 — Mostrar letra ───────────────────────────
+    /**
+     * Consulta la letra (CLOB) en BD y la muestra en un JDialog.
+     * Si la canción no tiene letra registrada, informa al usuario.
+     */
+    private void mostrarLetra() {
+        if (cancionActual == null) return;
+
+        // Busca la letra en BD en hilo secundario
+        new Thread(() -> {
+            String letra = cancionDAO.obtenerLetra(cancionActual.getIdCancion());
+            SwingUtilities.invokeLater(() -> {
+                JDialog dialogo = new JDialog(
+                    SwingUtilities.getWindowAncestor(PlayerBar.this),
+                    "Letra — " + cancionActual.getNombre(),
+                    Dialog.ModalityType.MODELESS);
+                dialogo.setSize(500, 560);
+                dialogo.setLocationRelativeTo(PlayerBar.this);
+
+                JPanel contenido = new JPanel(new BorderLayout(0, 12));
+                contenido.setBackground(UITheme.SURFACE);
+                contenido.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+
+                // Cabecera
+                JLabel titulo = new JLabel(cancionActual.getNombre());
+                titulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                titulo.setForeground(UITheme.TEXT);
+                JLabel artista = new JLabel(cancionActual.getNombreArtistasCompleto());
+                artista.setFont(UITheme.FONT_SMALL);
+                artista.setForeground(UITheme.MUTED);
+
+                JPanel header = new JPanel(new GridLayout(2, 1, 0, 4));
+                header.setOpaque(false);
+                header.add(titulo);
+                header.add(artista);
+
+                // Cuerpo — letra
+                JTextArea areaLetra = new JTextArea();
+                areaLetra.setEditable(false);
+                areaLetra.setLineWrap(true);
+                areaLetra.setWrapStyleWord(true);
+                areaLetra.setBackground(UITheme.SURFACE);
+                areaLetra.setForeground(UITheme.TEXT);
+                areaLetra.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                areaLetra.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+                areaLetra.setText(
+                    (letra == null || letra.isBlank())
+                        ? "Esta canción no tiene letra registrada en la base de datos."
+                        : letra);
+
+                JScrollPane scroll = new JScrollPane(areaLetra);
+                scroll.setBorder(null);
+                scroll.setOpaque(false);
+                scroll.getViewport().setOpaque(false);
+                scroll.getVerticalScrollBar().setUnitIncrement(12);
+
+                contenido.add(header, BorderLayout.NORTH);
+                contenido.add(scroll, BorderLayout.CENTER);
+
+                dialogo.setContentPane(contenido);
+                dialogo.setVisible(true);
+            });
+        }).start();
+    }
+
     // ── Acciones internas ─────────────────────────────────
     private void togglePlay() {
         AudioService audio = AudioService.getInstance();
@@ -309,21 +402,16 @@ public class PlayerBar extends JPanel {
         btnPlay.repaint();
     }
 
-    /**
-     * Alterna el corazón y, si pasa a "gustado",
-     * llama al callback que persiste en BD.
-     */
     private void toggleLike() {
         liked = !liked;
         if (liked) {
-            btnHeart.setText("\u2665");  // ♥ relleno
+            btnHeart.setText("\u2665");
             btnHeart.setForeground(new Color(0xFF, 0x22, 0x55));
-            // Guardar en BD si hay canción reproduciendo y callback registrado
             if (cancionActual != null && onMeGusta != null) {
                 onMeGusta.accept(cancionActual);
             }
         } else {
-            btnHeart.setText("\u2661");  // ♡ vacío
+            btnHeart.setText("\u2661");
             btnHeart.setForeground(UITheme.MUTED);
         }
     }
@@ -374,9 +462,6 @@ public class PlayerBar extends JPanel {
         return l;
     }
 
-    /**
-     * Dibuja una imagen manteniendo proporción (cover — rellena sin deformar).
-     */
     public static void drawCover(Graphics2D g2, java.awt.Image img,
                                   int x, int y, int w, int h) {
         int iw = img.getWidth(null);
