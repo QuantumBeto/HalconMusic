@@ -1,18 +1,33 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.border.TitledBorder;
+
 import com.halconmusic.dao.CancionDAO;
 import com.halconmusic.dao.ResumenDAO;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
-
-import javax.swing.*;
-import javax.swing.border.TitledBorder;
-import java.awt.*;
-import java.sql.Date;
-import java.text.SimpleDateFormat;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * REQ. 8  — Historial por usuario + historial general (pestaña).
@@ -238,8 +253,10 @@ public class ResumenPanel extends JPanel {
             lbl.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
             target.add(lbl);
         } else {
+            int[] contador = {1};  // ← agrega esta línea ANTES del for
             for (Cancion c : lista) {
-                target.add(new SongRow(c, onPlay, onLike));
+                int num = contador[0]++;
+                target.add(new SongRow(num, c, () -> onPlay.accept(c), idUsuario, () -> onLike.accept(c)));
             }
         }
         target.revalidate();

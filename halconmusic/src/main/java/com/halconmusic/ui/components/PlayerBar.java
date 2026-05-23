@@ -67,6 +67,7 @@ public class PlayerBar extends JPanel {
     private JButton btnNext;
     private JLabel  btnHeart;
     private JButton btnLetra;       // ← REQ. 11
+    private JButton btnVideo;       // ← REQ. 11 video
     private JLabel  lblCurrent;
     private JLabel  lblTotal;
     private JPanel  progTrack;
@@ -160,10 +161,24 @@ public class PlayerBar extends JPanel {
         btnLetra.setEnabled(false);
         btnLetra.addActionListener(e -> mostrarLetra());
 
+        // Botón Video (REQ. 11)
+        btnVideo = new JButton("\u25A6 Video");
+        btnVideo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnVideo.setForeground(UITheme.MUTED);
+        btnVideo.setBackground(UITheme.SURFACE);
+        btnVideo.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
+            BorderFactory.createEmptyBorder(3, 8, 3, 8)));
+        btnVideo.setFocusPainted(false);
+        btnVideo.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnVideo.setEnabled(false);
+        btnVideo.addActionListener(e -> mostrarVideo());
+
         p.add(thumbPanel);
         p.add(info);
         p.add(btnHeart);
         p.add(btnLetra);
+        p.add(btnVideo);
         return p;
     }
 
@@ -304,6 +319,7 @@ public class PlayerBar extends JPanel {
         btnHeart.setText("\u2661");
         btnHeart.setForeground(UITheme.MUTED);
         btnLetra.setEnabled(true);   // activa botón letra cuando hay canción
+        btnVideo.setEnabled(true);   // activa botón video cuando hay canción
 
         SwingUtilities.invokeLater(() -> {
             if (thumbPanel != null) thumbPanel.repaint();
@@ -327,6 +343,210 @@ public class PlayerBar extends JPanel {
                 actualizarProgreso();
             })
         );
+    }
+
+    // ── REQ. 11 — Mostrar video ───────────────────────────
+    /**
+     * Pausa el audio, obtiene el VIDEO (BLOB) en hilo secundario
+     * y lo reproduce con sonido en un JDialog usando JavaFX MediaView.
+     */
+    private void mostrarVideo() {
+        if (cancionActual == null) return;
+
+        AudioService.getInstance().pausar();
+        isPlaying = false;
+        btnPlay.repaint();
+
+        new Thread(() -> {
+            byte[] videoBytes = cancionDAO.obtenerVideo(cancionActual.getIdCancion());
+
+            SwingUtilities.invokeLater(() -> {
+                if (videoBytes == null || videoBytes.length == 0) {
+                    javax.swing.JOptionPane.showMessageDialog(
+                        SwingUtilities.getWindowAncestor(PlayerBar.this),
+                        "Esta canción no tiene video registrado.",
+                        "Sin video", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
+                try {
+                    java.io.File tempFile = java.io.File.createTempFile("halcon_video_", ".mp4");
+                    tempFile.deleteOnExit();
+                    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile)) {
+                        fos.write(videoBytes);
+                    }
+
+                    javafx.application.Platform.runLater(() -> {
+                        javafx.stage.Stage stage = new javafx.stage.Stage();
+                        stage.setTitle("▶  " + cancionActual.getNombre()
+                                     + "  —  " + cancionActual.getNombreArtistasCompleto());
+                        stage.initModality(javafx.stage.Modality.NONE);
+                        stage.setResizable(true);
+
+                        // ── Media ──────────────────────────────────────────────
+                        javafx.scene.media.Media       media  =
+                            new javafx.scene.media.Media(tempFile.toURI().toString());
+                        javafx.scene.media.MediaPlayer player =
+                            new javafx.scene.media.MediaPlayer(media);
+                        javafx.scene.media.MediaView   view   =
+                            new javafx.scene.media.MediaView(player);
+
+                        view.setFitWidth(854);
+                        view.setFitHeight(480);
+                        view.setPreserveRatio(true);
+
+                        // ── Barra de progreso ──────────────────────────────────
+                        javafx.scene.control.Slider sliderProgreso =
+                            new javafx.scene.control.Slider(0, 1, 0);
+                        sliderProgreso.setPrefWidth(620);
+                        sliderProgreso.setStyle("-fx-accent: #1DB954;");
+
+                        javafx.scene.control.Label lblActual  = new javafx.scene.control.Label("0:00");
+                        javafx.scene.control.Label lblTotal   = new javafx.scene.control.Label("0:00");
+                        lblActual.setStyle("-fx-text-fill: #aaaaaa; -fx-font-size: 12px;");
+                        lblTotal.setStyle( "-fx-text-fill: #aaaaaa; -fx-font-size: 12px;");
+
+                        // ── Botones de control ─────────────────────────────────
+                        javafx.scene.control.Button btnPlayPause =
+                            new javafx.scene.control.Button("⏸");
+                        btnPlayPause.setStyle(
+                            "-fx-background-color: #1DB954; -fx-text-fill: black;" +
+                            "-fx-font-size: 14px; -fx-background-radius: 50%;" +
+                            "-fx-min-width: 36px; -fx-min-height: 36px;");
+
+                        javafx.scene.control.Button btnRetroceder =
+                            new javafx.scene.control.Button("⏮");
+                        javafx.scene.control.Button btnAdelantar =
+                            new javafx.scene.control.Button("⏭");
+                        String estiloCtrl =
+                            "-fx-background-color: transparent; -fx-text-fill: #cccccc;" +
+                            "-fx-font-size: 16px; -fx-cursor: hand;";
+                        btnRetroceder.setStyle(estiloCtrl);
+                        btnAdelantar.setStyle(estiloCtrl);
+
+                        // ── Volumen ────────────────────────────────────────────
+                        javafx.scene.control.Label lblVolIcon =
+                            new javafx.scene.control.Label("🔊");
+                        lblVolIcon.setStyle("-fx-font-size: 14px;");
+
+                        javafx.scene.control.Slider sliderVol =
+                            new javafx.scene.control.Slider(0, 1, 0.8);
+                        sliderVol.setPrefWidth(90);
+                        sliderVol.setStyle("-fx-accent: #ffffff;");
+                        player.setVolume(0.8);
+
+                        sliderVol.valueProperty().addListener((obs, oldV, newV) ->
+                            player.setVolume(newV.doubleValue()));
+
+                        // ── Tiempo actual mientras reproduce ───────────────────
+                        player.currentTimeProperty().addListener((obs, oldT, newT) -> {
+                            if (!sliderProgreso.isValueChanging()) {
+                                javafx.util.Duration dur = player.getTotalDuration();
+                                if (dur != null && dur.greaterThan(javafx.util.Duration.ZERO)) {
+                                    sliderProgreso.setValue(newT.toSeconds() / dur.toSeconds());
+                                }
+                            }
+                            int seg = (int) newT.toSeconds();
+                            lblActual.setText(String.format("%d:%02d", seg / 60, seg % 60));
+                        });
+
+                        // Duración total cuando el media esté listo
+                        player.setOnReady(() -> {
+                            int tot = (int) player.getTotalDuration().toSeconds();
+                            lblTotal.setText(String.format("%d:%02d", tot / 60, tot % 60));
+                        });
+
+                        // ── Seek al mover slider ───────────────────────────────
+                        sliderProgreso.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
+                            if (!isChanging) {
+                                javafx.util.Duration dur = player.getTotalDuration();
+                                if (dur != null)
+                                    player.seek(dur.multiply(sliderProgreso.getValue()));
+                            }
+                        });
+                        sliderProgreso.setOnMouseClicked(e -> {
+                            javafx.util.Duration dur = player.getTotalDuration();
+                            if (dur != null)
+                                player.seek(dur.multiply(sliderProgreso.getValue()));
+                        });
+
+                        // ── Acciones botones ───────────────────────────────────
+                        final boolean[] playing = {true};
+
+                        btnPlayPause.setOnAction(e -> {
+                            if (playing[0]) {
+                                player.pause();
+                                btnPlayPause.setText("▶");
+                            } else {
+                                player.play();
+                                btnPlayPause.setText("⏸");
+                            }
+                            playing[0] = !playing[0];
+                        });
+
+                        btnRetroceder.setOnAction(e -> {
+                            javafx.util.Duration actual = player.getCurrentTime();
+                            player.seek(actual.subtract(javafx.util.Duration.seconds(10)));
+                        });
+
+                        btnAdelantar.setOnAction(e -> {
+                            javafx.util.Duration actual = player.getCurrentTime();
+                            player.seek(actual.add(javafx.util.Duration.seconds(10)));
+                        });
+
+                        player.setOnEndOfMedia(() -> {
+                            btnPlayPause.setText("▶");
+                            playing[0] = false;
+                        });
+
+                        // ── Layout ─────────────────────────────────────────────
+                        javafx.scene.layout.HBox rowProgreso = new javafx.scene.layout.HBox(8,
+                            lblActual, sliderProgreso, lblTotal);
+                        rowProgreso.setAlignment(javafx.geometry.Pos.CENTER);
+
+                        javafx.scene.layout.HBox rowControles = new javafx.scene.layout.HBox(16,
+                            btnRetroceder, btnPlayPause, btnAdelantar);
+                        rowControles.setAlignment(javafx.geometry.Pos.CENTER);
+
+                        javafx.scene.layout.HBox rowVolumen = new javafx.scene.layout.HBox(8,
+                            lblVolIcon, sliderVol);
+                        rowVolumen.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+
+                        javafx.scene.layout.BorderPane rowBottom =
+                            new javafx.scene.layout.BorderPane();
+                        rowBottom.setCenter(rowControles);
+                        rowBottom.setRight(rowVolumen);
+                        javafx.scene.layout.BorderPane.setAlignment(
+                            rowVolumen, javafx.geometry.Pos.CENTER_RIGHT);
+
+                        javafx.scene.layout.VBox playbar = new javafx.scene.layout.VBox(10,
+                            rowProgreso, rowBottom);
+                        playbar.setStyle(
+                            "-fx-background-color: #181818;" +
+                            "-fx-padding: 12 20 12 20;");
+
+                        javafx.scene.layout.StackPane videoArea =
+                            new javafx.scene.layout.StackPane(view);
+                        videoArea.setStyle("-fx-background-color: black;");
+
+                        javafx.scene.layout.BorderPane root =
+                            new javafx.scene.layout.BorderPane();
+                        root.setCenter(videoArea);
+                        root.setBottom(playbar);
+                        root.setStyle("-fx-background-color: black;");
+
+                        stage.setScene(new javafx.scene.Scene(root, 854, 560));
+                        stage.show();
+                        player.play();
+
+                        stage.setOnCloseRequest(ev -> player.stop());
+                    });
+
+                } catch (Exception ex) {
+                    System.err.println("Error al preparar video: " + ex.getMessage());
+                }
+            });
+        }).start();
     }
 
     // ── REQ. 11 — Mostrar letra ───────────────────────────

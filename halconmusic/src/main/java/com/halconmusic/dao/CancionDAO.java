@@ -1,14 +1,19 @@
 package com.halconmusic.dao;
 
-import com.halconmusic.db.ConexionDB;
-import com.halconmusic.model.Cancion;
-
-import javax.imageio.ImageIO;
 import java.awt.Image;
-import java.io.InputStream;
-import java.sql.*;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.imageio.ImageIO;
+
+import com.halconmusic.db.ConexionDB;
+import com.halconmusic.model.Cancion;
 
 public class CancionDAO {
 
@@ -93,6 +98,28 @@ public class CancionDAO {
     /**
      * Retorna la letra (CLOB) de una canción, o null si no tiene.
      */
+    // ── REQ. 11 — OBTENER VIDEO DE CANCIÓN ───────────────
+    /**
+    * Retorna los bytes del VIDEO (BLOB) de una canción, o null si no tiene.
+     */ 
+    public byte[] obtenerVideo(String idCancion) {
+        String sql = "SELECT VIDEO FROM CANCIONES WHERE ID_CANCION = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idCancion);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Blob blob = rs.getBlob("VIDEO");
+                    if (blob != null && blob.length() > 0) {
+                        return blob.getBytes(1, (int) blob.length());
+                    }
+                }
+            }
+        } catch (SQLException e) {
+        System.err.println("Error al obtener video: " + e.getMessage());
+        }
+        return null;
+    }
+    
     public String obtenerLetra(String idCancion) {
         String sql = "SELECT LETRA FROM CANCIONES WHERE ID_CANCION = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {

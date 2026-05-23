@@ -1,14 +1,20 @@
 package com.halconmusic.dao;
 
+import java.awt.Image;
+import java.sql.Blob;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.imageio.ImageIO;
+
 import com.halconmusic.db.ConexionDB;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.model.ResumenSemanal;
-
-import javax.imageio.ImageIO;
-import java.awt.Image;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ResumenDAO {
 
@@ -187,9 +193,11 @@ public class ResumenDAO {
             String idUsuario, Date desde, Date hasta) {
         List<Cancion> lista = new ArrayList<>();
         String sql = """
+        SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
+        FROM (
             SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
-                   A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
-                   C.EMOCION, C.DURACION_SEG, C.FECHA
+                A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                C.EMOCION, C.DURACION_SEG, C.FECHA
             FROM CANCIONES C
             JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
             JOIN HISTORIAL H            ON HC.ID_HISTORIAL = H.ID_HISTORIAL
@@ -197,9 +205,10 @@ public class ResumenDAO {
             JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
             JOIN RESUMENES_SEMANALES RS ON RS.ID_HISTORIAL = H.ID_HISTORIAL
             WHERE H.ID_USUARIO = ?
-              AND RS.FECHA BETWEEN ? AND ?
-            ORDER BY UPPER(C.NOMBRE)
-            """;
+            AND RS.FECHA BETWEEN ? AND ?
+        )
+        ORDER BY UPPER(NOMBRE)
+        """;
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, idUsuario);
             ps.setDate  (2, desde);
@@ -280,27 +289,33 @@ public class ResumenDAO {
     public List<Cancion> obtenerCancionesGlobalEnRango(Date desde, Date hasta) {
         List<Cancion> lista = new ArrayList<>();
         String sql = (desde != null && hasta != null) ? """
-            SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
-                   A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
-                   C.EMOCION, C.DURACION_SEG, C.FECHA
-            FROM CANCIONES C
-            JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
-            JOIN HISTORIAL H            ON HC.ID_HISTORIAL = H.ID_HISTORIAL
-            JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
-            JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
-            JOIN RESUMENES_SEMANALES RS ON RS.ID_HISTORIAL = H.ID_HISTORIAL
-            WHERE RS.FECHA BETWEEN ? AND ?
-            ORDER BY UPPER(C.NOMBRE)
+            SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
+            FROM (
+                SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
+                    A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                    C.EMOCION, C.DURACION_SEG, C.FECHA
+                FROM CANCIONES C
+                JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
+                JOIN HISTORIAL H            ON HC.ID_HISTORIAL = H.ID_HISTORIAL
+                JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
+                JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
+                JOIN RESUMENES_SEMANALES RS ON RS.ID_HISTORIAL = H.ID_HISTORIAL
+                WHERE RS.FECHA BETWEEN ? AND ?
+            )
+            ORDER BY UPPER(NOMBRE)
             """ : """
-            SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
-                   A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
-                   C.EMOCION, C.DURACION_SEG, C.FECHA
-            FROM CANCIONES C
-            JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
-            JOIN HISTORIAL H            ON HC.ID_HISTORIAL = H.ID_HISTORIAL
-            JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
-            JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
-            ORDER BY UPPER(C.NOMBRE)
+            SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
+            FROM (
+                SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
+                    A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                    C.EMOCION, C.DURACION_SEG, C.FECHA
+                FROM CANCIONES C
+                JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
+                JOIN HISTORIAL H            ON HC.ID_HISTORIAL = H.ID_HISTORIAL
+                JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
+                JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
+            )
+            ORDER BY UPPER(NOMBRE)
             """;
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             if (desde != null && hasta != null) { ps.setDate(1, desde); ps.setDate(2, hasta); }
@@ -318,14 +333,17 @@ public class ResumenDAO {
     public List<Cancion> obtenerHistorialGeneral() {
         List<Cancion> lista = new ArrayList<>();
         String sql = """
-            SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
-                   A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
-                   C.EMOCION, C.DURACION_SEG, C.FECHA
-            FROM CANCIONES C
-            JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
-            JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
-            JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
-            ORDER BY UPPER(C.NOMBRE)
+            SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
+            FROM (
+                SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
+                    A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                    C.EMOCION, C.DURACION_SEG, C.FECHA
+                FROM CANCIONES C
+                JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
+                JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
+                JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
+            )
+             BY UPPER(NOMBRE)
             """;
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {

@@ -1,16 +1,31 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.border.TitledBorder;
+
 import com.halconmusic.dao.ResumenDAO;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
-
-import javax.swing.*;
-import javax.swing.border.TitledBorder;
-import java.awt.*;
-import java.sql.Date;
-import java.text.SimpleDateFormat;
-import java.util.List;
 
 /**
  * REQ. 10 — Resumen musical de toda la app (todos los usuarios) con rango de fechas.
@@ -154,9 +169,10 @@ public class ResumenGlobalPanel extends JPanel {
             l.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
             panelCanciones.add(l);
         } else {
+            int[] contador = {1};
             for (Cancion c : lista) {
-                // SongRow sin botones de reproducción (panel de consulta)
-                panelCanciones.add(new SongRow(c, null, null));
+                int num = contador[0]++;
+                panelCanciones.add(new SongRow(num, c, () -> {}, null, () -> {}));
             }
         }
         panelCanciones.revalidate();
