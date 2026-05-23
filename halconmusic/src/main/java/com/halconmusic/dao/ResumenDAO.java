@@ -335,16 +335,19 @@ public class ResumenDAO {
         String sql = """
             SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
             FROM (
-                SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
+                SELECT C.ID_CANCION, C.NOMBRE, C.GENERO,
                     A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
-                    C.EMOCION, C.DURACION_SEG, C.FECHA
-                FROM CANCIONES C
-                JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
-                JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
-                JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
+                    C.EMOCION, C.DURACION_SEG, C.FECHA,
+                    MAX(HC.FECHA_REPRODUCCION) OVER (PARTITION BY C.ID_CANCION) AS ULTIMA_VEZ,
+                    ROW_NUMBER() OVER (PARTITION BY C.ID_CANCION ORDER BY HC.FECHA_REPRODUCCION DESC) AS RN
+            FROM CANCIONES C
+                JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION  = HC.ID_CANCION
+                JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION  = AC.ID_CANCION
+                JOIN ARTISTAS A             ON AC.ID_ARTISTA = A.ID_ARTISTA
             )
-             BY UPPER(NOMBRE)
-            """;
+            WHERE RN = 1
+            ORDER BY ULTIMA_VEZ DESC
+            """;        
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) lista.add(mapearCancion(rs));

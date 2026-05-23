@@ -42,7 +42,7 @@ public class HistorialDAO {
         // Evita duplicados en la misma sesión (opcional: quitar si se quieren repetidos)
         if (yaExisteEnHistorial(idHistorial, idCancion)) return;
 
-        String sql = "INSERT INTO HISTORIAL_CANCIONES (ID_HISTORIAL, ID_CANCION) VALUES (?, ?)";
+        String sql = "INSERT INTO HISTORIAL_CANCIONES (ID_HISTORIAL, ID_CANCION, FECHA_REPRODUCCION) VALUES (?, ?, SYSTIMESTAMP)";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, idHistorial);
             ps.setString(2, idCancion);
