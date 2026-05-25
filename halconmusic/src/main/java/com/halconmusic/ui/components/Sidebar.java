@@ -1,11 +1,26 @@
 package com.halconmusic.ui.components;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 import java.util.function.Consumer;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 
 import com.halconmusic.ui.UITheme;
 
@@ -16,7 +31,7 @@ public class Sidebar extends JPanel {
     private final String           tipoRaw;    // "Premium" o "Gratis"
 
     public Sidebar(Consumer<String> onNavigate, String usuarioNombre,
-                   String usuarioTipo, String tipoRaw) {
+               String usuarioTipo, String tipoRaw, List<String[]> playlists) {
         this.onNavigate = onNavigate;
         this.tipoRaw    = tipoRaw;
 
@@ -42,7 +57,7 @@ public class Sidebar extends JPanel {
         top.add(buildDivider());
         top.add(buildPlaylistLabel());
 
-        JScrollPane scrollPlaylists = new JScrollPane(buildPlaylistPanel());
+        JScrollPane scrollPlaylists = new JScrollPane(buildPlaylistPanel(playlists));
         scrollPlaylists.setBorder(null);
         scrollPlaylists.setOpaque(false);
         scrollPlaylists.getViewport().setOpaque(false);
@@ -124,19 +139,26 @@ public class Sidebar extends JPanel {
         JLabel l = new JLabel("MIS PLAYLISTS");
         l.setFont(UITheme.FONT_LABEL);
         l.setForeground(UITheme.MUTED);
+        JLabel btnNueva = new JLabel("＋");
+        btnNueva.setForeground(UITheme.ACCENT);
+        btnNueva.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnNueva.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnNueva.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { onNavigate.accept("crearPlaylist"); }
+        });
         p.add(l);
+        p.add(btnNueva);
         return p;
     }
 
-    private JPanel buildPlaylistPanel() {
+    private JPanel buildPlaylistPanel(List<String[]> playlists) {
         JPanel p = new JPanel();
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        String[] playlists = {"Corridos 2024","Reggaeton Hits","Baladas Clásicas",
-                              "Pop Internacional","Grupero Mix","Banda Sinaloense",
-                              "Corridos Tumbados","Reggaeton Nuevo","Rancheras Eternas"};
-        for (String pl : playlists) {
-            JLabel item = new JLabel(pl);
+        for (String[] pl : playlists) {
+            String id     = pl[0];
+            String nombre = pl[1];
+            JLabel item = new JLabel(nombre);
             item.setFont(UITheme.FONT_SMALL);
             item.setForeground(UITheme.MUTED);
             item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -144,6 +166,7 @@ public class Sidebar extends JPanel {
             item.addMouseListener(new MouseAdapter() {
                 @Override public void mouseEntered(MouseEvent e) { item.setForeground(UITheme.TEXT); }
                 @Override public void mouseExited (MouseEvent e) { item.setForeground(UITheme.MUTED); }
+                @Override public void mouseClicked(MouseEvent e) { onNavigate.accept("playlist:" + id); }
             });
             p.add(item);
         }

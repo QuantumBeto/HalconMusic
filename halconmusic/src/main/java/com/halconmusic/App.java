@@ -1,15 +1,37 @@
 package com.halconmusic;
 
-import java.awt.*;
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Dimension;
+import java.util.List;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 import com.halconmusic.dao.HistorialDAO;
+import com.halconmusic.dao.ResumenDAO;
 import com.halconmusic.db.ConexionDB;
 import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.PlayerBar;
 import com.halconmusic.ui.components.Sidebar;
-import com.halconmusic.ui.panels.*;
+import com.halconmusic.ui.panels.AlbumesPanel;
+import com.halconmusic.ui.panels.ArtistasPanel;
+import com.halconmusic.ui.panels.BuscarPanel;
+import com.halconmusic.ui.panels.CancionesPanel;
+import com.halconmusic.ui.panels.CrearAlbumPanel;
+import com.halconmusic.ui.panels.CrearArtistaPanel;
+import com.halconmusic.ui.panels.CrearCancionPanel;
+import com.halconmusic.ui.panels.CrearPlaylistPanel;
+import com.halconmusic.ui.panels.HomePanel;
+import com.halconmusic.ui.panels.LoginPanel;
+import com.halconmusic.ui.panels.MeGustasPanel;
+import com.halconmusic.ui.panels.ResumenGlobalPanel;
+import com.halconmusic.ui.panels.ResumenPanel;
 
 public class App extends JFrame {
 
@@ -85,7 +107,9 @@ public class App extends JFrame {
         appPanel.setBackground(UITheme.BG);
 
         // Sidebar recibe tipoRaw para mostrar/ocultar sección Artista
-        sidebar = new Sidebar(this::navegar, nombreUsuario, tipoDisplay, tipoRaw);
+        ResumenDAO resumenDAO = new ResumenDAO();
+        List<String[]> playlists = resumenDAO.obtenerPlaylistsDeUsuario(idUsuario);
+        sidebar = new Sidebar(this::navegar, nombreUsuario, tipoDisplay, tipoRaw, playlists);
 
         cardLayout  = new CardLayout();
         contentArea = new JPanel(cardLayout);
@@ -111,6 +135,7 @@ public class App extends JFrame {
         contentArea.add(new CrearArtistaPanel(), "crearArtista");
         contentArea.add(new CrearAlbumPanel(),   "crearAlbum");
         contentArea.add(new CrearCancionPanel(), "crearCancion");
+        contentArea.add(new CrearPlaylistPanel(idUsuario, this::refrescarSidebar), "crearPlaylist");
 
         playerBar = new PlayerBar(this::agregarMeGusta);
 
@@ -127,10 +152,24 @@ public class App extends JFrame {
     }
 
     private void navegar(String vista) {
+        if (vista.startsWith("playlist:")) {
+            cardLayout.show(contentArea, "crearPlaylist"); // por ahora navega al panel de crear
+            return;
+        }
         cardLayout.show(contentArea, vista);
         if ("historial".equals(vista))     resumenPanel.refrescar();
         if ("megustas".equals(vista))      meGustasPanel.refrescar();
         if ("resumenGlobal".equals(vista)) { /* ResumenGlobalPanel carga en su constructor */ }
+    }
+
+    private void refrescarSidebar() {
+        //Recarga las playlists del usuario en el sidebar
+        com.halconmusic.dao.ResumenDAO dao = new com.halconmusic.dao.ResumenDAO();
+        java.util.List<String[]> playlists = dao.obtenerPlaylistsDeUsuario(idUsuario);
+        // Reconstruir sidebar con nuevas playlists
+        JSplitPane split = (JSplitPane) ((JPanel) rootPanel.getComponent(1)).getComponent(0);
+        split.setLeftComponent(new Sidebar(this::navegar, nombreUsuario, tipoDisplay, tipoRaw, playlists));
+        split.revalidate();
     }
 
     private void reproducir(Cancion cancion) {

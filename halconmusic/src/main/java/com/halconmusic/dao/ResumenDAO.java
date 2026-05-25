@@ -193,10 +193,11 @@ public class ResumenDAO {
             String idUsuario, Date desde, Date hasta) {
         List<Cancion> lista = new ArrayList<>();
         String sql = """
-        SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
+        SELECT sub.ID_CANCION, sub.NOMBRE, sub.GENERO, sub.ARTISTA, sub.FT,
+               C2.PORTADA, sub.EMOCION, sub.DURACION_SEG, sub.FECHA
         FROM (
             SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
-                A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                A.NOMBRE AS ARTISTA, C.FT,
                 C.EMOCION, C.DURACION_SEG, C.FECHA
             FROM CANCIONES C
             JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
@@ -206,8 +207,9 @@ public class ResumenDAO {
             JOIN RESUMENES_SEMANALES RS ON RS.ID_HISTORIAL = H.ID_HISTORIAL
             WHERE H.ID_USUARIO = ?
             AND RS.FECHA BETWEEN ? AND ?
-        )
-        ORDER BY UPPER(NOMBRE)
+        ) sub
+        JOIN CANCIONES C2 ON C2.ID_CANCION = sub.ID_CANCION
+        ORDER BY UPPER(sub.NOMBRE)
         """;
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, idUsuario);
@@ -289,10 +291,11 @@ public class ResumenDAO {
     public List<Cancion> obtenerCancionesGlobalEnRango(Date desde, Date hasta) {
         List<Cancion> lista = new ArrayList<>();
         String sql = (desde != null && hasta != null) ? """
-            SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
+            SELECT sub.ID_CANCION, sub.NOMBRE, sub.GENERO, sub.ARTISTA, sub.FT,
+                   C2.PORTADA, sub.EMOCION, sub.DURACION_SEG, sub.FECHA
             FROM (
                 SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
-                    A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                    A.NOMBRE AS ARTISTA, C.FT,
                     C.EMOCION, C.DURACION_SEG, C.FECHA
                 FROM CANCIONES C
                 JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
@@ -301,21 +304,24 @@ public class ResumenDAO {
                 JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
                 JOIN RESUMENES_SEMANALES RS ON RS.ID_HISTORIAL = H.ID_HISTORIAL
                 WHERE RS.FECHA BETWEEN ? AND ?
-            )
-            ORDER BY UPPER(NOMBRE)
+            ) sub
+            JOIN CANCIONES C2 ON C2.ID_CANCION = sub.ID_CANCION
+            ORDER BY UPPER(sub.NOMBRE)
             """ : """
-            SELECT ID_CANCION, NOMBRE, GENERO, ARTISTA, FT, PORTADA, EMOCION, DURACION_SEG, FECHA
+            SELECT sub.ID_CANCION, sub.NOMBRE, sub.GENERO, sub.ARTISTA, sub.FT,
+                   C2.PORTADA, sub.EMOCION, sub.DURACION_SEG, sub.FECHA
             FROM (
                 SELECT DISTINCT C.ID_CANCION, C.NOMBRE, C.GENERO,
-                    A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                    A.NOMBRE AS ARTISTA, C.FT,
                     C.EMOCION, C.DURACION_SEG, C.FECHA
                 FROM CANCIONES C
                 JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION   = HC.ID_CANCION
                 JOIN HISTORIAL H            ON HC.ID_HISTORIAL = H.ID_HISTORIAL
                 JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION   = AC.ID_CANCION
                 JOIN ARTISTAS A             ON AC.ID_ARTISTA  = A.ID_ARTISTA
-            )
-            ORDER BY UPPER(NOMBRE)
+            ) sub
+            JOIN CANCIONES C2 ON C2.ID_CANCION = sub.ID_CANCION
+            ORDER BY UPPER(sub.NOMBRE)
             """;
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             if (desde != null && hasta != null) { ps.setDate(1, desde); ps.setDate(2, hasta); }
@@ -338,16 +344,15 @@ public class ResumenDAO {
                 SELECT C.ID_CANCION, C.NOMBRE, C.GENERO,
                     A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
                     C.EMOCION, C.DURACION_SEG, C.FECHA,
-                    MAX(HC.FECHA_REPRODUCCION) OVER (PARTITION BY C.ID_CANCION) AS ULTIMA_VEZ,
-                    ROW_NUMBER() OVER (PARTITION BY C.ID_CANCION ORDER BY HC.FECHA_REPRODUCCION DESC) AS RN
-            FROM CANCIONES C
+                    ROW_NUMBER() OVER (PARTITION BY C.ID_CANCION ORDER BY C.ID_CANCION) AS RN
+                FROM CANCIONES C
                 JOIN HISTORIAL_CANCIONES HC ON C.ID_CANCION  = HC.ID_CANCION
                 JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION  = AC.ID_CANCION
                 JOIN ARTISTAS A             ON AC.ID_ARTISTA = A.ID_ARTISTA
             )
             WHERE RN = 1
-            ORDER BY ULTIMA_VEZ DESC
-            """;        
+            ORDER BY UPPER(NOMBRE)
+            """;
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) lista.add(mapearCancion(rs));
@@ -364,6 +369,27 @@ public class ResumenDAO {
             rs.getString("GENEROPRINCIPAL"), rs.getString("CANCIONESPRINCIPALES"),
             rs.getString("ARTISTAPRINCIPAL"), rs.getString("EMOCION"),
             rs.getString("ID_USUARIO"), rs.getString("ID_HISTORIAL"));
+    }
+
+    public List<String[]> obtenerPlaylistsDeUsuario(String idUsuario) {
+        List<String[]> lista = new ArrayList<>();
+        String sql = """
+            SELECT P.ID_PLAYLIST, P.NOMBRE
+            FROM PLAYLISTS P
+            JOIN USUARIOS_PLAYLISTS UP ON P.ID_PLAYLIST = UP.ID_PLAYLIST
+            WHERE UP.ID_USUARIO = ?
+            ORDER BY P.NOMBRE
+            """;
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    lista.add(new String[]{ rs.getString("ID_PLAYLIST"), rs.getString("NOMBRE") });
+            }
+        } catch (SQLException e) {
+            System.err.println("Error en obtenerPlaylistsDeUsuario: " + e.getMessage());
+        }
+        return lista;
     }
 
     private Cancion mapearCancion(ResultSet rs) throws SQLException {

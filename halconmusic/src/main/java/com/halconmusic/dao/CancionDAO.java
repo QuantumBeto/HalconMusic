@@ -363,4 +363,76 @@ public class CancionDAO {
             rs.getString("EMOCION"),    rs.getInt("DURACION_SEG"),
             rs.getInt("FECHA"));
     }
+
+    public List<Cancion> obtenerPorPlaylist(String idPlaylist) {
+        List<Cancion> lista = new ArrayList<>();
+        String sql = """
+            SELECT C.ID_CANCION, C.NOMBRE, C.GENERO,
+                   A.NOMBRE AS ARTISTA, C.FT, C.PORTADA,
+                   C.EMOCION, C.DURACION_SEG, C.FECHA
+            FROM CANCIONES C
+            JOIN PLAYLISTS_CANCIONES PC ON C.ID_CANCION = PC.ID_CANCION
+            JOIN ARTISTAS_CANCIONES AC  ON C.ID_CANCION = AC.ID_CANCION
+            JOIN ARTISTAS A             ON AC.ID_ARTISTA = A.ID_ARTISTA
+            WHERE PC.ID_PLAYLIST = ?
+            ORDER BY C.NOMBRE
+            """;
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idPlaylist);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapearCancion(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error en obtenerPorPlaylist: " + e.getMessage());
+        }
+        return lista;
+    }
+    public void crearPlaylist(String idUsuario, String nombre, String descripcion, List<String> idCanciones) {
+        try {
+            // Generar nuevo ID
+            String nuevoId;
+            try (PreparedStatement ps = con.prepareStatement(
+                    "SELECT NVL(MAX(TO_NUMBER(SUBSTR(ID_PLAYLIST,3))),0)+1 AS NEXT_ID FROM PLAYLISTS");
+                 ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                nuevoId = String.format("PL%03d", rs.getInt("NEXT_ID"));
+            }
+
+            // Insertar en PLAYLISTS
+            String sqlPL = "INSERT INTO PLAYLISTS (ID_PLAYLIST, NOMBRE, PORTADA, CREADOR, DESCRIPCION, NUMERODECANCIONES) VALUES (?, ?, EMPTY_BLOB(), ?, ?, ?)";
+            try (PreparedStatement ps = con.prepareStatement(sqlPL)) {
+                ps.setString(1, nuevoId);
+                ps.setString(2, nombre);
+                ps.setString(3, idUsuario);
+                ps.setString(4, descripcion);
+                ps.setInt(5, idCanciones.size());
+                ps.executeUpdate();
+            }
+
+            // Insertar en USUARIOS_PLAYLISTS
+            try (PreparedStatement ps = con.prepareStatement(
+                    "INSERT INTO USUARIOS_PLAYLISTS (ID_USUARIO, ID_PLAYLIST) VALUES (?, ?)")) {
+                ps.setString(1, idUsuario);
+                ps.setString(2, nuevoId);
+                ps.executeUpdate();
+            }
+
+            // Insertar canciones en PLAYLISTS_CANCIONES
+            String sqlPC = "INSERT INTO PLAYLISTS_CANCIONES (ID_PLAYLIST, ID_CANCION) VALUES (?, ?)";
+            try (PreparedStatement ps = con.prepareStatement(sqlPC)) {
+                for (String idC : idCanciones) {
+                    ps.setString(1, nuevoId);
+                    ps.setString(2, idC);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            con.commit();
+            System.out.println("✅ Playlist creada: " + nuevoId);
+        } catch (SQLException e) {
+            System.err.println("Error en crearPlaylist: " + e.getMessage());
+            try { con.rollback(); } catch (SQLException ignored) {}
+        }
+    }  
 }
