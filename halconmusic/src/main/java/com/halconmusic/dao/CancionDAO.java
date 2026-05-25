@@ -32,9 +32,13 @@ public class CancionDAO {
     public boolean insertar(String nombre, String genero, String artista,
                             String emocion, int duracionSeg, int fecha,
                             String ft, String letra,
-                            String idArtista, String idAlbum) {
+                            String idArtista, String idAlbum,
+                            java.io.File archivoPortada,  // ← nuevo
+                            java.io.File archivoMusica) { // ← nuevo
+
         String idNuevo = generarNuevoId();
 
+        // Paso 1: INSERT con EMPTY_BLOB() igual que antes
         String sqlCan = """
             INSERT INTO CANCIONES
               (ID_CANCION, NOMBRE, GENERO, ARTISTA, PORTADA, MUSICA,
@@ -49,37 +53,70 @@ public class CancionDAO {
             ps.setString(5, emocion.trim());
             ps.setInt   (6, duracionSeg);
             ps.setInt   (7, fecha);
-            ps.setString(8, (ft == null || ft.isBlank()) ? null : ft.trim());
-            ps.setString(9, (letra == null || letra.isBlank()) ? null : letra.trim());
+            ps.setString(8, (ft    == null || ft.isBlank())    ? null : ft.trim());
+            ps.setString(9, (letra == null || letra.isBlank())  ? null : letra.trim());
             ps.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Error al insertar canción: " + e.getMessage());
             return false;
         }
 
-        // Vincula a artista
-        String sqlArt = "INSERT INTO ARTISTAS_CANCIONES (ID_ARTISTA, ID_CANCION) VALUES (?, ?)";
-        try (PreparedStatement ps = con.prepareStatement(sqlArt)) {
+        // Paso 2: escribir PORTADA via locator
+        String sqlBlob = "SELECT PORTADA, MUSICA FROM CANCIONES WHERE ID_CANCION = ? FOR UPDATE";
+        try (PreparedStatement ps = con.prepareStatement(sqlBlob)) {
+            con.setAutoCommit(false);
+            ps.setString(1, idNuevo);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    // Portada
+                    oracle.sql.BLOB blobPortada = (oracle.sql.BLOB) rs.getBlob("PORTADA");
+                    try (java.io.FileInputStream fis = new java.io.FileInputStream(archivoPortada);
+                         java.io.OutputStream    os  = blobPortada.getBinaryOutputStream()) {
+                        byte[] buf = new byte[blobPortada.getBufferSize()];
+                        int n;
+                        while ((n = fis.read(buf)) != -1) os.write(buf, 0, n);
+                    }
+                    // Música
+                    oracle.sql.BLOB blobMusica = (oracle.sql.BLOB) rs.getBlob("MUSICA");
+                    try (java.io.FileInputStream fis = new java.io.FileInputStream(archivoMusica);
+                         java.io.OutputStream    os  = blobMusica.getBinaryOutputStream()) {
+                        byte[] buf = new byte[blobMusica.getBufferSize()];
+                        int n;
+                        while ((n = fis.read(buf)) != -1) os.write(buf, 0, n);
+                    }
+                }
+    }
+            con.commit();
+            con.setAutoCommit(true);
+        } catch (Exception e) {
+            System.err.println("Error al cargar BLOBs: " + e.getMessage());
+            try { con.rollback(); con.setAutoCommit(true); } catch (Exception ignored) {}
+            return false;
+        }
+
+        // Paso 3: vincular artista y álbum
+        String sqlAC = "INSERT INTO ARTISTAS_CANCIONES (ID_ARTISTA, ID_CANCION) VALUES (?, ?)";
+        try (PreparedStatement ps = con.prepareStatement(sqlAC)) {
             ps.setString(1, idArtista);
             ps.setString(2, idNuevo);
             ps.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Error al vincular artista-canción: " + e.getMessage());
+            return false;
         }
 
-        // Vincula a álbum si se seleccionó uno
         if (idAlbum != null && !idAlbum.isBlank()) {
-            String sqlAlb = "INSERT INTO ALBUMES_CANCIONES (ID_ALBUM, ID_CANCION) VALUES (?, ?)";
-            try (PreparedStatement ps = con.prepareStatement(sqlAlb)) {
+            String sqlAL = "INSERT INTO ALBUMES_CANCIONES (ID_ALBUM, ID_CANCION) VALUES (?, ?)";
+            try (PreparedStatement ps = con.prepareStatement(sqlAL)) {
                 ps.setString(1, idAlbum);
                 ps.setString(2, idNuevo);
                 ps.executeUpdate();
             } catch (SQLException e) {
                 System.err.println("Error al vincular álbum-canción: " + e.getMessage());
+                return false;
             }
         }
 
-        System.out.println("✅ Canción creada: " + idNuevo);
         return true;
     }
 

@@ -1,13 +1,33 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
 import com.halconmusic.dao.AlbumDAO;
 import com.halconmusic.dao.ArtistaDAO;
 import com.halconmusic.dao.CancionDAO;
 import com.halconmusic.ui.UITheme;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.List;
 
 /**
  * REQ. 2 — Panel de creación de Canciones.
@@ -30,6 +50,10 @@ public class CrearCancionPanel extends JPanel {
     private List<String[]>    artistas;
     private List<String[]>    albumesList;
     private JLabel        lblMensaje;
+    private java.io.File archivoPortada;
+    private java.io.File archivoMusica;
+    private JLabel       lblPortada;
+    private JLabel       lblMusica;
 
     public CrearCancionPanel() {
         setBackground(UITheme.BG);
@@ -99,6 +123,54 @@ public class CrearCancionPanel extends JPanel {
         scrollLetra.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
         scrollLetra.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // ── Selector Portada ──────────────────────────────────
+        JButton btnPortada = crearBotonSecundario("📁 Elegir imagen");
+        btnPortada.setPreferredSize(new Dimension(160, 36));
+        btnPortada.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes (JPG, PNG)", "jpg", "jpeg", "png"));
+            if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                archivoPortada = fc.getSelectedFile();
+                lblPortada.setText("✅ " + archivoPortada.getName());
+                lblPortada.setForeground(new Color(0x4CAF50));
+            }
+        });
+        lblPortada = new JLabel("Sin imagen seleccionada");
+        lblPortada.setFont(UITheme.FONT_SMALL);
+        lblPortada.setForeground(UITheme.MUTED);
+        lblPortada.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel rowPortada = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        rowPortada.setOpaque(false);
+        rowPortada.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rowPortada.add(btnPortada);
+        rowPortada.add(lblPortada);
+
+        // ── Selector Música (MP3) ─────────────────────────────
+        JButton btnMusica = crearBotonSecundario("📁 Elegir MP3");
+        btnMusica.setPreferredSize(new Dimension(160, 36));
+        btnMusica.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Audio MP3", "mp3"));
+            if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                archivoMusica = fc.getSelectedFile();
+                lblMusica.setText("✅ " + archivoMusica.getName());
+                lblMusica.setForeground(new Color(0x4CAF50));
+            }
+        });
+        lblMusica = new JLabel("Sin archivo de audio seleccionado");
+        lblMusica.setFont(UITheme.FONT_SMALL);
+        lblMusica.setForeground(UITheme.MUTED);
+        lblMusica.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel rowMusica = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        rowMusica.setOpaque(false);
+        rowMusica.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rowMusica.add(btnMusica);
+        rowMusica.add(lblMusica);
+
         lblMensaje = new JLabel(" ");
         lblMensaje.setFont(UITheme.FONT_SMALL);
         lblMensaje.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -134,6 +206,10 @@ public class CrearCancionPanel extends JPanel {
         card.add(txtFt);                     card.add(Box.createVerticalStrut(10));
         card.add(etq("Letra (opcional)"));   card.add(Box.createVerticalStrut(4));
         card.add(scrollLetra);               card.add(Box.createVerticalStrut(14));
+        card.add(etq("Portada *"));             card.add(Box.createVerticalStrut(4));
+        card.add(rowPortada);                    card.add(Box.createVerticalStrut(10));
+        card.add(etq("Archivo de audio (MP3) *")); card.add(Box.createVerticalStrut(4));
+        card.add(rowMusica);                     card.add(Box.createVerticalStrut(14));
         card.add(lblMensaje);                card.add(Box.createVerticalStrut(8));
         card.add(botones);
 
@@ -171,11 +247,25 @@ public class CrearCancionPanel extends JPanel {
         String idAlbum = (idxAlb == 0) ? null : albumesList.get(idxAlb - 1)[0];
 
         final String nFinal = nombre;
+        // Validar archivos
+        if (archivoPortada == null) {
+            msg("Selecciona una imagen de portada.", false);
+            return;
+        }
+        if (archivoMusica == null) {
+            msg("Selecciona el archivo de audio MP3.", false);
+            return;
+        }
+
+        final java.io.File fPortada = archivoPortada;
+        final java.io.File fMusica  = archivoMusica;
+        
         new Thread(() -> {
             boolean ok = cancionDAO.insertar(
                 nFinal, genero, nombreArt, emocion,
                 duracion, fecha, ft.isEmpty() ? null : ft,
-                letra.isEmpty() ? null : letra, idArtista, idAlbum);
+                letra.isEmpty() ? null : letra, idArtista, idAlbum,
+                fPortada, fMusica);
             SwingUtilities.invokeLater(() -> {
                 if (ok) { msg("✅ Canción \"" + nFinal + "\" creada.", true); limpiar(); }
                 else    { msg("❌ Error al guardar la canción.", false); }
@@ -184,6 +274,12 @@ public class CrearCancionPanel extends JPanel {
     }
 
     private void limpiar() {
+        archivoPortada = null;
+        archivoMusica  = null;
+        lblPortada.setText("Sin imagen seleccionada");
+        lblPortada.setForeground(UITheme.MUTED);
+        lblMusica.setText("Sin archivo de audio seleccionado");
+        lblMusica.setForeground(UITheme.MUTED);
         txtNombre.setText(""); txtGenero.setText(""); txtEmocion.setText("");
         txtDuracion.setText(""); txtFecha.setText(""); txtFt.setText("");
         txtLetra.setText("");
