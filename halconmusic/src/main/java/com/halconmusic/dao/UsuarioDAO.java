@@ -38,7 +38,7 @@ public class UsuarioDAO {
                 if (rs.next()) {
                     String tipoRaw = rs.getString(COL_TIPO); // "Premium" o "Gratis"
                     String tipoDisplay = "Premium".equalsIgnoreCase(tipoRaw)
-                            ? "Artista \u2756"   // ✦  — usuario creador
+                            ? "Artista \u2605"
                             : "Oyente";
                     return new String[]{
                         rs.getString(COL_ID),

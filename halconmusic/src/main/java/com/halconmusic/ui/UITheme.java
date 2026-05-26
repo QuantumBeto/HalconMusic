@@ -1,14 +1,11 @@
 package com.halconmusic.ui;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
 
-/**
- * Constantes de diseño — Paleta de colores y fuentes del tema HalconMusic.
- * Inspirado en la UI tipo Spotify con acento dorado.
- */
 public final class UITheme {
 
-    private UITheme() {} // No instanciable
+    private UITheme() {}
 
     // ── Colores ──────────────────────────────────────────
     public static final Color BG          = new Color(0x0A, 0x0A, 0x0A);
@@ -33,15 +30,47 @@ public final class UITheme {
     public static final Font FONT_NUM     = new Font("Segoe UI", Font.BOLD,   22);
 
     // ── Dimensiones ──────────────────────────────────────
-    public static final int SIDEBAR_W    = 220;
-    public static final int PLAYER_H     = 80;
-    public static final int CARD_SIZE    = 150;
-    public static final int RADIUS       = 10;
+    public static final int SIDEBAR_W = 220;
+    public static final int PLAYER_H  = 80;
+    public static final int CARD_SIZE = 150;
+    public static final int RADIUS    = 10;
 
     // ── Utilidades ───────────────────────────────────────
-
-    /** Aclara un color añadiendo alfa */
     public static Color withAlpha(Color c, int alpha) {
         return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
+    }
+
+    /**
+     * Genera HTML que renderiza el emoji con "Segoe UI Emoji" (color, Windows)
+     * y el texto normal con "Segoe UI".
+     *
+     * Uso:  label.setText(UITheme.emoji("🎵", "Género: Rock"));
+     *       label.setText(UITheme.emoji("✅", "Archivo cargado"));
+     *
+     * @param emojiChar  El emoji (puede ser un String con el codepoint completo)
+     * @param texto      El texto que va después del emoji
+     */
+    public static String emoji(String emojiChar, String texto) {
+        return "<html>"
+             + "<font face='Segoe UI Emoji'>" + emojiChar + "</font>"
+             + "&nbsp;"
+             + "<font face='Segoe UI'>" + texto + "</font>"
+             + "</html>";
+    }
+
+    /**
+     * Sobrecarga: solo emoji, sin texto adicional.
+     * Útil para botones o labels que solo muestran el emoji.
+     */
+    public static String emoji(String emojiChar) {
+        return "<html><font face='Segoe UI Emoji'>" + emojiChar + "</font></html>";
+    }
+
+    /**
+     * Convierte un color Java a hex CSS para usarlo dentro de HTML de Swing.
+     * Ej: toHex(UITheme.ACCENT) → "#C8A84B"
+     */
+    public static String toHex(Color c) {
+        return String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
     }
 }

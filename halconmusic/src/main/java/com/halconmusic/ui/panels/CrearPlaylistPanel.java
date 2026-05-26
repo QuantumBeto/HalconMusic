@@ -192,8 +192,15 @@ public class CrearPlaylistPanel extends JPanel {
     }
 
     private void estilizarBtn(JButton b) {
-        b.setBackground(UITheme.SURFACE);
-        b.setForeground(UITheme.TEXT);
+        b.setBackground(UITheme.CARD);
+        b.setForeground(UITheme.ACCENT);
+        b.setFont(UITheme.FONT_BODY);
+        b.setOpaque(true);
+        b.setContentAreaFilled(true);
+        b.setBorderPainted(true);
+        b.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UITheme.ACCENT, 1),
+            BorderFactory.createEmptyBorder(6, 12, 6, 12)));
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }

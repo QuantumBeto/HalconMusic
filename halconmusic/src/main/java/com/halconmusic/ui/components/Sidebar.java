@@ -28,7 +28,7 @@ public class Sidebar extends JPanel {
 
     private final Consumer<String> onNavigate;
     private       String           currentView = "home";
-    private final String           tipoRaw;    // "Premium" o "Gratis"
+    private final String           tipoRaw;
 
     public Sidebar(Consumer<String> onNavigate, String usuarioNombre,
                String usuarioTipo, String tipoRaw, List<String[]> playlists) {
@@ -48,7 +48,6 @@ public class Sidebar extends JPanel {
         top.add(buildDivider());
         top.add(buildLibrarySection());
 
-        // ── Sección exclusiva para Artistas (req. 1 y 2) ──────────────
         if ("Premium".equalsIgnoreCase(tipoRaw)) {
             top.add(buildDivider());
             top.add(buildArtistSection());
@@ -68,20 +67,19 @@ public class Sidebar extends JPanel {
         add(buildUserBadge(usuarioNombre, usuarioTipo), BorderLayout.SOUTH);
     }
 
-    // ── Sección exclusiva artista ──────────────────────────
     private JPanel buildArtistSection() {
         JPanel p = new JPanel();
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.add(navLabel("Gestión Artista"));
-        p.add(navItem("crearArtista", "✚", "Nuevo Artista"));
-        p.add(navItem("crearAlbum",   "✚", "Nuevo Álbum"));
-        p.add(navItem("crearCancion", "✚", "Nueva Canción"));
-        p.add(navItem("resumenGlobal","◉", "Resumen Global"));
+        // Usar caracteres que Segoe UI Symbol soporta bien
+        p.add(navItem("crearArtista", "+",  "Nuevo Artista"));
+        p.add(navItem("crearAlbum",   "+",  "Nuevo Álbum"));
+        p.add(navItem("crearCancion", "+",  "Nueva Canción"));
+        p.add(navItem("resumenGlobal","*",   "Resumen Global"));
         return p;
     }
 
-    // ── Logo ──────────────────────────────────────────────
     private JPanel buildLogo() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 14));
         p.setOpaque(false);
@@ -115,10 +113,11 @@ public class Sidebar extends JPanel {
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.add(navLabel("Menú"));
-        p.add(navItem("home",      "⌂", "Inicio"));
-        p.add(navItem("buscar",    "⌕", "Buscar"));
-        p.add(navItem("historial", "◷", "Historial"));
-        p.add(navItem("megustas",  "♥", "Me gusta"));
+        // Iconos con fuente Dialog (lógica de Java, garantizada en todos los SO)
+        p.add(navItem("home",      "\u2302", "Inicio"));    // ⌂
+        p.add(navItem("buscar",    "\uD83D\uDD0D", "Buscar"));  // 🔍 emoji universal
+        p.add(navItem("historial", "\u25F7", "Historial")); // ◷
+        p.add(navItem("megustas",  "\u2665", "Me gusta"));  // ♥
         return p;
     }
 
@@ -127,9 +126,9 @@ public class Sidebar extends JPanel {
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.add(navLabel("Biblioteca"));
-        p.add(navItem("artistas",  "◎", "Artistas"));
-        p.add(navItem("albumes",   "▣", "Álbumes"));
-        p.add(navItem("canciones", "♫", "Canciones"));
+        p.add(navItem("artistas",  "\u25CE", "Artistas")); // ◎
+        p.add(navItem("albumes",   "\u25A3", "Álbumes"));  // ▣
+        p.add(navItem("canciones", "\u266B", "Canciones")); // ♫
         return p;
     }
 
@@ -139,9 +138,9 @@ public class Sidebar extends JPanel {
         JLabel l = new JLabel("MIS PLAYLISTS");
         l.setFont(UITheme.FONT_LABEL);
         l.setForeground(UITheme.MUTED);
-        JLabel btnNueva = new JLabel("＋");
+        JLabel btnNueva = new JLabel("+");
         btnNueva.setForeground(UITheme.ACCENT);
-        btnNueva.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnNueva.setFont(new Font("Segoe UI", Font.BOLD, 16));
         btnNueva.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnNueva.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) { onNavigate.accept("crearPlaylist"); }
@@ -227,8 +226,9 @@ public class Sidebar extends JPanel {
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        // Usar fuente "Dialog" (fuente lógica Java que mapea al mejor sistema disponible)
         JLabel iconLbl  = new JLabel(icon);
-        iconLbl.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 14));
+        iconLbl.setFont(new Font(Font.DIALOG, Font.PLAIN, 15));
         JLabel labelLbl = new JLabel(label);
         labelLbl.setFont(UITheme.FONT_BODY);
 

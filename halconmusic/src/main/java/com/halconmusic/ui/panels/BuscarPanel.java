@@ -92,7 +92,7 @@ public class BuscarPanel extends JPanel {
         ));
 
         JLabel lupa = new JLabel("⌕");
-        lupa.setFont(new Font("Segoe UI", Font.PLAIN, 20));
+        lupa.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 18));
         lupa.setForeground(UITheme.MUTED);
 
         JTextField field = new JTextField();

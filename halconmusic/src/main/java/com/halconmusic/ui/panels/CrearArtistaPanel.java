@@ -1,23 +1,37 @@
 package com.halconmusic.ui.panels;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
 import com.halconmusic.dao.ArtistaDAO;
 import com.halconmusic.ui.UITheme;
 
-import javax.swing.*;
-import java.awt.*;
-
-/**
- * REQ. 2 — Panel de creación de Artistas (solo visible para usuario tipo Artista/Premium).
- */
 public class CrearArtistaPanel extends JPanel {
 
     private final ArtistaDAO artistaDAO = new ArtistaDAO();
 
-    private JTextField  txtNombre;
-    private JTextField  txtDescripcion;
-    private JTextField  txtGenero;
-    private JTextField  txtPais;
-    private JLabel      lblMensaje;
+    private JTextField txtNombre;
+    private JTextField txtDescripcion;
+    private JTextField txtGenero;
+    private JTextField txtPais;
+    private JLabel     lblMensaje;
 
     public CrearArtistaPanel() {
         setBackground(UITheme.BG);
@@ -32,7 +46,6 @@ public class CrearArtistaPanel extends JPanel {
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
             BorderFactory.createEmptyBorder(32, 40, 32, 40)));
-        card.setPreferredSize(new Dimension(480, 420));
 
         JLabel titulo = new JLabel("Nuevo Artista");
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 22));
@@ -62,24 +75,15 @@ public class CrearArtistaPanel extends JPanel {
 
         card.add(titulo);
         card.add(Box.createVerticalStrut(24));
-        card.add(etiqueta("Nombre *"));
-        card.add(Box.createVerticalStrut(4));
-        card.add(txtNombre);
-        card.add(Box.createVerticalStrut(12));
-        card.add(etiqueta("Descripción *"));
-        card.add(Box.createVerticalStrut(4));
-        card.add(txtDescripcion);
-        card.add(Box.createVerticalStrut(12));
-        card.add(etiqueta("Género principal *"));
-        card.add(Box.createVerticalStrut(4));
-        card.add(txtGenero);
-        card.add(Box.createVerticalStrut(12));
-        card.add(etiqueta("País de origen *"));
-        card.add(Box.createVerticalStrut(4));
-        card.add(txtPais);
-        card.add(Box.createVerticalStrut(16));
-        card.add(lblMensaje);
-        card.add(Box.createVerticalStrut(8));
+        card.add(etiqueta("Nombre *"));           card.add(Box.createVerticalStrut(4));
+        card.add(txtNombre);                       card.add(Box.createVerticalStrut(12));
+        card.add(etiqueta("Descripción *"));       card.add(Box.createVerticalStrut(4));
+        card.add(txtDescripcion);                  card.add(Box.createVerticalStrut(12));
+        card.add(etiqueta("Género principal *"));  card.add(Box.createVerticalStrut(4));
+        card.add(txtGenero);                       card.add(Box.createVerticalStrut(12));
+        card.add(etiqueta("País de origen *"));    card.add(Box.createVerticalStrut(4));
+        card.add(txtPais);                         card.add(Box.createVerticalStrut(16));
+        card.add(lblMensaje);                      card.add(Box.createVerticalStrut(8));
         card.add(botones);
 
         return card;
@@ -99,35 +103,27 @@ public class CrearArtistaPanel extends JPanel {
         new Thread(() -> {
             boolean ok = artistaDAO.insertar(nombre, desc, genero, pais);
             SwingUtilities.invokeLater(() -> {
-                if (ok) {
-                    mensaje("✅ Artista \"" + nombre + "\" creado correctamente.", true);
-                    limpiar();
-                } else {
-                    mensaje("❌ Error al guardar. Revisa los datos.", false);
-                }
+                if (ok) { mensaje("Artista \"" + nombre + "\" creado correctamente.", true); limpiar(); }
+                else    { mensaje("Error al guardar. Revisa los datos.", false); }
             });
         }).start();
     }
 
     private void limpiar() {
-        txtNombre.setText("");
-        txtDescripcion.setText("");
-        txtGenero.setText("");
-        txtPais.setText("");
+        txtNombre.setText(""); txtDescripcion.setText("");
+        txtGenero.setText(""); txtPais.setText("");
         lblMensaje.setText(" ");
     }
 
     private void mensaje(String texto, boolean exito) {
-        lblMensaje.setText(texto);
+        lblMensaje.setText(UITheme.emoji(exito ? "✅" : "❌", texto));
         lblMensaje.setForeground(exito ? new Color(0x4CAF50) : new Color(0xFF4444));
     }
 
     private JTextField campo(String placeholder) {
         JTextField f = new JTextField();
-        f.setBackground(UITheme.CARD);
-        f.setForeground(UITheme.TEXT);
-        f.setCaretColor(UITheme.ACCENT);
-        f.setFont(UITheme.FONT_BODY);
+        f.setBackground(UITheme.CARD); f.setForeground(UITheme.TEXT);
+        f.setCaretColor(UITheme.ACCENT); f.setFont(UITheme.FONT_BODY);
         f.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
             BorderFactory.createEmptyBorder(8, 12, 8, 12)));
@@ -138,34 +134,26 @@ public class CrearArtistaPanel extends JPanel {
     }
 
     private JLabel etiqueta(String texto) {
-        JLabel l = new JLabel(texto);
-        l.setFont(UITheme.FONT_SMALL);
-        l.setForeground(UITheme.MUTED);
-        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel l = new JLabel(texto); l.setFont(UITheme.FONT_SMALL);
+        l.setForeground(UITheme.MUTED); l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }
 
     private JButton crearBoton(String texto) {
-        JButton b = new JButton(texto);
-        b.setBackground(UITheme.ACCENT);
-        b.setForeground(UITheme.BG);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        b.setBorderPainted(false);
-        b.setFocusPainted(false);
+        JButton b = new JButton(texto); b.setBackground(UITheme.ACCENT);
+        b.setForeground(UITheme.BG); b.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        b.setOpaque(true); b.setContentAreaFilled(true);
+        b.setBorderPainted(false); b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setPreferredSize(new Dimension(160, 36));
-        return b;
+        b.setPreferredSize(new Dimension(160, 36)); return b;
     }
 
     private JButton crearBotonSecundario(String texto) {
-        JButton b = new JButton(texto);
-        b.setBackground(UITheme.SURFACE);
-        b.setForeground(UITheme.MUTED);
-        b.setFont(UITheme.FONT_BODY);
+        JButton b = new JButton(texto); b.setBackground(UITheme.SURFACE);
+        b.setForeground(UITheme.MUTED); b.setFont(UITheme.FONT_BODY);
         b.setBorder(BorderFactory.createLineBorder(UITheme.BORDER, 1, true));
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setPreferredSize(new Dimension(100, 36));
-        return b;
+        b.setPreferredSize(new Dimension(100, 36)); return b;
     }
 }

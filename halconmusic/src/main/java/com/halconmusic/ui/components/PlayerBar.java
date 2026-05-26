@@ -149,10 +149,12 @@ public class PlayerBar extends JPanel {
         });
 
         // Botón Letra (REQ. 11)
-        btnLetra = new JButton("\u266B Letra");
-        btnLetra.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnLetra = new JButton(UITheme.emoji("🎵", " Letra"));
+        btnLetra.setFont(UITheme.FONT_SMALL);
         btnLetra.setForeground(UITheme.MUTED);
         btnLetra.setBackground(UITheme.SURFACE);
+        btnLetra.setOpaque(true);         
+        btnLetra.setContentAreaFilled(true); 
         btnLetra.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
             BorderFactory.createEmptyBorder(3, 8, 3, 8)));
@@ -162,10 +164,12 @@ public class PlayerBar extends JPanel {
         btnLetra.addActionListener(e -> mostrarLetra());
 
         // Botón Video (REQ. 11)
-        btnVideo = new JButton("\u25A6 Video");
-        btnVideo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnVideo = new JButton(UITheme.emoji("🎬", " Video"));
+        btnVideo.setFont(UITheme.FONT_SMALL);
         btnVideo.setForeground(UITheme.MUTED);
         btnVideo.setBackground(UITheme.SURFACE);
+        btnVideo.setOpaque(true);        
+        btnVideo.setContentAreaFilled(true);  
         btnVideo.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
             BorderFactory.createEmptyBorder(3, 8, 3, 8)));

@@ -27,14 +27,6 @@ import com.halconmusic.model.Cancion;
 import com.halconmusic.ui.UITheme;
 import com.halconmusic.ui.components.SongRow;
 
-/**
- * REQ. 10 — Resumen musical de toda la app (todos los usuarios) con rango de fechas.
- *  · Género más escuchado
- *  · Emoción más escuchada
- *  · Canciones escuchadas en ese período
- *
- * Solo accesible para el usuario tipo Artista/Premium.
- */
 public class ResumenGlobalPanel extends JPanel {
 
     private final ResumenDAO resumenDAO = new ResumenDAO();
@@ -50,11 +42,10 @@ public class ResumenGlobalPanel extends JPanel {
         setLayout(new BorderLayout(0, 16));
         setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
         construirUI();
-        cargarTodo(); // carga inicial sin filtro
+        cargarTodo();
     }
 
     private void construirUI() {
-        // ── Encabezado ────────────────────────────────────────────────
         JLabel hdr = new JLabel("Resumen Global de la App");
         hdr.setFont(new Font("Segoe UI", Font.BOLD, 22));
         hdr.setForeground(UITheme.TEXT);
@@ -83,11 +74,11 @@ public class ResumenGlobalPanel extends JPanel {
         filtros.add(Box.createHorizontalStrut(8));
         filtros.add(btnFiltrar); filtros.add(btnTodo);
 
-        // ── Chips de estadísticas ─────────────────────────────────────
+        // ── Chips ─────────────────────────────────────────────────────
         JPanel chips = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         chips.setOpaque(false);
-        lblGenero  = chip("🎵 Género: —");
-        lblEmocion = chip("💭 Emoción: —");
+        lblGenero  = chip(UITheme.emoji("🎵", "Género: —"));
+        lblEmocion = chip(UITheme.emoji("💭", "Emoción: —"));
         chips.add(lblGenero);
         chips.add(lblEmocion);
 
@@ -122,7 +113,6 @@ public class ResumenGlobalPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
     }
 
-    // ── Carga sin filtro ──────────────────────────────────────────────
     private void cargarTodo() {
         new Thread(() -> {
             List<String[]> gens = resumenDAO.obtenerGenerosMasEscuchadosGlobal(null, null);
@@ -132,7 +122,6 @@ public class ResumenGlobalPanel extends JPanel {
         }).start();
     }
 
-    // ── Carga con filtro de fechas ────────────────────────────────────
     private void aplicarFiltro() {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         Date desde, hasta;
@@ -153,12 +142,11 @@ public class ResumenGlobalPanel extends JPanel {
         }).start();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────
     private void actualizarChips(List<String[]> gens, List<String[]> ems) {
         String g = gens.isEmpty() ? "—" : gens.get(0)[0] + " (" + gens.get(0)[1] + ")";
         String e = ems.isEmpty()  ? "—" : ems.get(0)[0]  + " (" + ems.get(0)[1]  + ")";
-        lblGenero.setText("🎵 Género: " + g);
-        lblEmocion.setText("💭 Emoción: " + e);
+        lblGenero.setText(UITheme.emoji("🎵", "Género: "  + g));
+        lblEmocion.setText(UITheme.emoji("💭", "Emoción: " + e));
     }
 
     private void renderizar(List<Cancion> lista) {
@@ -192,7 +180,8 @@ public class ResumenGlobalPanel extends JPanel {
     private TitledBorder tituloBorde(String t) {
         TitledBorder tb = BorderFactory.createTitledBorder(
             BorderFactory.createLineBorder(UITheme.BORDER, 1, true), t);
-        tb.setTitleColor(UITheme.MUTED); tb.setTitleFont(UITheme.FONT_SMALL);
+        tb.setTitleColor(UITheme.TEXT);
+        tb.setTitleFont(UITheme.FONT_SMALL);
         return tb;
     }
 
@@ -206,10 +195,12 @@ public class ResumenGlobalPanel extends JPanel {
         f.setPreferredSize(new Dimension(120, 32));
         return f;
     }
+
     private JLabel etq(String t) {
         JLabel l = new JLabel(t); l.setFont(UITheme.FONT_SMALL);
         l.setForeground(UITheme.MUTED); return l;
     }
+
     private JButton crearBoton(String t) {
         JButton b = new JButton(t); b.setBackground(UITheme.ACCENT);
         b.setForeground(UITheme.BG); b.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -217,6 +208,7 @@ public class ResumenGlobalPanel extends JPanel {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setPreferredSize(new Dimension(100, 32)); return b;
     }
+
     private JButton crearBotonSec(String t) {
         JButton b = new JButton(t); b.setBackground(UITheme.SURFACE);
         b.setForeground(UITheme.MUTED); b.setFont(UITheme.FONT_BODY);
@@ -225,6 +217,7 @@ public class ResumenGlobalPanel extends JPanel {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setPreferredSize(new Dimension(80, 32)); return b;
     }
+
     private String hoy() {
         return new SimpleDateFormat("dd/MM/yyyy").format(new java.util.Date());
     }
