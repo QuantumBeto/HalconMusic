@@ -22,6 +22,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
+import javax.swing.SwingConstants;
 
 import com.halconmusic.ui.UITheme;
 
@@ -236,7 +237,7 @@ public class Sidebar extends JPanel {
     }
 
     private JPanel navItem(String view, String icon, String label) {
-        JPanel p = new JPanel(new BorderLayout(8, 0)) {
+        JPanel p = new JPanel(new BorderLayout(0, 0)) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setColor(getBackground());
@@ -245,51 +246,49 @@ public class Sidebar extends JPanel {
                 super.paintComponent(g);
             }
         };
-        p.setBackground(UITheme.SIDEBAR);
-        p.setOpaque(false);
-        p.setMaximumSize(new Dimension(UITheme.SIDEBAR_W, 38));
-        p.setMinimumSize(new Dimension(UITheme.SIDEBAR_W, 38));
-        p.setPreferredSize(new Dimension(UITheme.SIDEBAR_W, 38));
-        p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+    p.setBackground(UITheme.SIDEBAR);
+    p.setOpaque(false);
+    p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+    p.setPreferredSize(new Dimension(UITheme.SIDEBAR_W, 36));
+    p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Usar fuente "Dialog" (fuente lógica Java que mapea al mejor sistema disponible)
-        JLabel iconLbl  = new JLabel(icon);
-        iconLbl.setFont(new Font(Font.DIALOG, Font.PLAIN, 13));
-        iconLbl.setPreferredSize(new Dimension(18, 18));
-        JLabel labelLbl = new JLabel(label);
-        labelLbl.setFont(UITheme.FONT_BODY);
+    JLabel iconLbl = new JLabel(icon, SwingConstants.CENTER);
+    iconLbl.setFont(new Font(Font.DIALOG, Font.PLAIN, 14));
+    iconLbl.setPreferredSize(new Dimension(42, 36));
 
-        boolean isActive = view.equals(currentView);
-        iconLbl.setForeground(isActive  ? UITheme.ACCENT : UITheme.MUTED);
-        labelLbl.setForeground(isActive ? UITheme.ACCENT : UITheme.MUTED);
+    JLabel labelLbl = new JLabel(label);
+    labelLbl.setFont(UITheme.FONT_BODY);
+    labelLbl.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 8));
 
-        JPanel izq = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
-        izq.setOpaque(false);
-        izq.add(iconLbl);
-        p.add(izq,     BorderLayout.WEST);
-        p.add(labelLbl, BorderLayout.CENTER);
+    boolean isActive = view.equals(currentView);
+    iconLbl.setForeground(isActive  ? UITheme.ACCENT : UITheme.MUTED);
+    labelLbl.setForeground(isActive ? UITheme.ACCENT : UITheme.MUTED);
 
-        p.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) {
-                if (!view.equals(currentView)) {
-                    iconLbl.setForeground(UITheme.TEXT);
-                    labelLbl.setForeground(UITheme.TEXT);
-                }
+    p.add(iconLbl,  BorderLayout.WEST);
+    p.add(labelLbl, BorderLayout.CENTER);
+
+    p.addMouseListener(new MouseAdapter() {
+        @Override public void mouseEntered(MouseEvent e) {
+            if (!view.equals(currentView)) {
+                iconLbl.setForeground(UITheme.TEXT);
+                labelLbl.setForeground(UITheme.TEXT);
             }
-            @Override public void mouseExited(MouseEvent e) {
-                if (!view.equals(currentView)) {
-                    iconLbl.setForeground(UITheme.MUTED);
-                    labelLbl.setForeground(UITheme.MUTED);
-                }
+        }
+        @Override public void mouseExited(MouseEvent e) {
+            if (!view.equals(currentView)) {
+                iconLbl.setForeground(UITheme.MUTED);
+                labelLbl.setForeground(UITheme.MUTED);
             }
-            @Override public void mouseClicked(MouseEvent e) {
-                currentView = view;
-                onNavigate.accept(view);
-            }
-        });
+        }
+        @Override public void mouseClicked(MouseEvent e) {
+            currentView = view;
+            onNavigate.accept(view);
+        }
+    });
 
-        return p;
-    }
+    return p;
+}
 
     private JLabel navLabel(String text) {
         JLabel l = new JLabel(text.toUpperCase());
