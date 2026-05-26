@@ -33,17 +33,18 @@ public class CancionDAO {
                             String emocion, int duracionSeg, int fecha,
                             String ft, String letra,
                             String idArtista, String idAlbum,
-                            java.io.File archivoPortada,  // ← nuevo
-                            java.io.File archivoMusica) { // ← nuevo
+                            java.io.File archivoPortada,
+                            java.io.File archivoMusica,
+                            java.io.File archivoVideo) {  // ← nuevo (opcional)
 
         String idNuevo = generarNuevoId();
 
         // Paso 1: INSERT con EMPTY_BLOB() igual que antes
         String sqlCan = """
             INSERT INTO CANCIONES
-              (ID_CANCION, NOMBRE, GENERO, ARTISTA, PORTADA, MUSICA,
+              (ID_CANCION, NOMBRE, GENERO, ARTISTA, PORTADA, MUSICA, VIDEO,
                EMOCION, DURACION_SEG, FECHA, FT, LETRA)
-            VALUES (?, ?, ?, ?, EMPTY_BLOB(), EMPTY_BLOB(), ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, EMPTY_BLOB(), EMPTY_BLOB(), EMPTY_BLOB(), ?, ?, ?, ?, ?)
             """;
         try (PreparedStatement ps = con.prepareStatement(sqlCan)) {
             ps.setString(1, idNuevo);
@@ -62,7 +63,7 @@ public class CancionDAO {
         }
 
         // Paso 2: escribir PORTADA via locator
-        String sqlBlob = "SELECT PORTADA, MUSICA FROM CANCIONES WHERE ID_CANCION = ? FOR UPDATE";
+        String sqlBlob = "SELECT PORTADA, MUSICA, VIDEO FROM CANCIONES WHERE ID_CANCION = ? FOR UPDATE";
         try (PreparedStatement ps = con.prepareStatement(sqlBlob)) {
             con.setAutoCommit(false);
             ps.setString(1, idNuevo);
@@ -83,6 +84,16 @@ public class CancionDAO {
                         byte[] buf = new byte[blobMusica.getBufferSize()];
                         int n;
                         while ((n = fis.read(buf)) != -1) os.write(buf, 0, n);
+                    }
+                    // Video (opcional)
+                    if (archivoVideo != null) {
+                        oracle.sql.BLOB blobVideo = (oracle.sql.BLOB) rs.getBlob("VIDEO");
+                        try (java.io.FileInputStream fis = new java.io.FileInputStream(archivoVideo);
+                             java.io.OutputStream    os  = blobVideo.getBinaryOutputStream()) {
+                            byte[] buf = new byte[blobVideo.getBufferSize()];
+                            int n;
+                            while ((n = fis.read(buf)) != -1) os.write(buf, 0, n);
+                        }
                     }
                 }
     }

@@ -47,8 +47,10 @@ public class CrearCancionPanel extends JPanel {
     private JLabel            lblMensaje;
     private java.io.File      archivoPortada;
     private java.io.File      archivoMusica;
+    private java.io.File      archivoVideo;
     private JLabel            lblPortada;
     private JLabel            lblMusica;
+    private JLabel            lblVideo;
 
     public CrearCancionPanel() {
         setBackground(UITheme.BG);
@@ -163,6 +165,28 @@ public class CrearCancionPanel extends JPanel {
         rowMusica.add(btnMusica);
         rowMusica.add(lblMusica);
 
+        // ── Selector Video ────────────────────────────────────────────
+        JButton btnVideo = crearBotonArchivo(UITheme.emoji("🎬", "Elegir MP4"));
+        btnVideo.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Video MP4", "mp4"));
+            if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                archivoVideo = fc.getSelectedFile();
+                lblVideo.setText(UITheme.emoji("✅", archivoVideo.getName()));
+                lblVideo.setForeground(new Color(0x4CAF50));
+            }
+        });
+        lblVideo = new JLabel("Sin archivo de video seleccionado (opcional)");
+        lblVideo.setFont(UITheme.FONT_SMALL);
+        lblVideo.setForeground(UITheme.MUTED);
+        lblVideo.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel rowVideo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        rowVideo.setOpaque(false);
+        rowVideo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rowVideo.add(btnVideo);
+        rowVideo.add(lblVideo);
+
         lblMensaje = new JLabel(" ");
         lblMensaje.setFont(UITheme.FONT_SMALL);
         lblMensaje.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -201,7 +225,9 @@ public class CrearCancionPanel extends JPanel {
         card.add(etq("Portada *"));               card.add(Box.createVerticalStrut(4));
         card.add(rowPortada);                     card.add(Box.createVerticalStrut(10));
         card.add(etq("Archivo de audio (MP3) *")); card.add(Box.createVerticalStrut(4));
-        card.add(rowMusica);                      card.add(Box.createVerticalStrut(14));
+        card.add(rowMusica);                      card.add(Box.createVerticalStrut(10));
+        card.add(etq("Video (MP4, opcional)"));   card.add(Box.createVerticalStrut(4));
+        card.add(rowVideo);                       card.add(Box.createVerticalStrut(14));
         card.add(lblMensaje);                     card.add(Box.createVerticalStrut(8));
         card.add(botones);
 
@@ -241,13 +267,14 @@ public class CrearCancionPanel extends JPanel {
         final String        nFinal   = nombre;
         final java.io.File  fPortada = archivoPortada;
         final java.io.File  fMusica  = archivoMusica;
+        final java.io.File  fVideo   = archivoVideo;
 
         new Thread(() -> {
             boolean ok = cancionDAO.insertar(
                 nFinal, genero, nombreArt, emocion,
                 duracion, fecha, ft.isEmpty() ? null : ft,
                 letra.isEmpty() ? null : letra, idArtista, idAlbum,
-                fPortada, fMusica);
+                fPortada, fMusica, fVideo);
             SwingUtilities.invokeLater(() -> {
                 if (ok) { msg("Canción \"" + nFinal + "\" creada correctamente.", true); limpiar(); }
                 else    { msg("Error al guardar la canción.", false); }
@@ -258,10 +285,13 @@ public class CrearCancionPanel extends JPanel {
     private void limpiar() {
         archivoPortada = null;
         archivoMusica  = null;
+        archivoVideo   = null;
         lblPortada.setText("Sin imagen seleccionada");
         lblPortada.setForeground(UITheme.MUTED);
         lblMusica.setText("Sin archivo de audio seleccionado");
         lblMusica.setForeground(UITheme.MUTED);
+        lblVideo.setText("Sin archivo de video seleccionado (opcional)");
+        lblVideo.setForeground(UITheme.MUTED);
         txtNombre.setText(""); txtGenero.setText(""); txtEmocion.setText("");
         txtDuracion.setText(""); txtFecha.setText(""); txtFt.setText("");
         txtLetra.setText("");
@@ -337,6 +367,9 @@ public class CrearCancionPanel extends JPanel {
         b.setBackground(UITheme.CARD);
         b.setForeground(UITheme.TEXT);
         b.setFont(UITheme.FONT_BODY);
+        b.setOpaque(true);
+        b.setContentAreaFilled(true);
+        b.setBorderPainted(true);
         b.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
             BorderFactory.createEmptyBorder(4, 12, 4, 12)));
