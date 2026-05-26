@@ -1,6 +1,5 @@
 package com.halconmusic.ui.panels;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -18,7 +17,6 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
@@ -30,7 +28,8 @@ public class CrearAlbumPanel extends JPanel {
 
     private final AlbumDAO   albumDAO   = new AlbumDAO();
     private final ArtistaDAO artistaDAO = new ArtistaDAO();
-
+    private java.io.File archivoPortada;
+    private JLabel       lblPortada;
     private JTextField        txtTitulo;
     private JTextField        txtGenero;
     private JTextField        txtFecha;
@@ -88,6 +87,37 @@ public class CrearAlbumPanel extends JPanel {
             }
         });
 
+        JButton btnPortada = new JButton("Seleccionar imagen...");
+        btnPortada.setBackground(UITheme.CARD);
+        btnPortada.setForeground(UITheme.TEXT);
+        btnPortada.setFont(UITheme.FONT_BODY);
+        btnPortada.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
+            BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+        btnPortada.setFocusPainted(false);
+        btnPortada.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnPortada.addActionListener(e -> {
+            javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes (JPG, PNG)", "jpg", "jpeg", "png"));
+            if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                archivoPortada = fc.getSelectedFile();
+                lblPortada.setText(archivoPortada.getName());
+                lblPortada.setForeground(new Color(0x4CAF50));
+            }
+        });
+
+        lblPortada = new JLabel("Sin imagen (opcional)");
+        lblPortada.setFont(UITheme.FONT_SMALL);
+        lblPortada.setForeground(UITheme.MUTED);
+        lblPortada.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel rowPortada = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        rowPortada.setOpaque(false);
+        rowPortada.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rowPortada.add(btnPortada);
+        rowPortada.add(lblPortada);
+
         lblMensaje = new JLabel(" ");
         lblMensaje.setFont(UITheme.FONT_SMALL);
         lblMensaje.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -143,7 +173,7 @@ public class CrearAlbumPanel extends JPanel {
         final  String tituloFinal = tit;
 
         new Thread(() -> {
-            boolean ok = albumDAO.insertar(tituloFinal, 0, gen, fecha, duracion, comp, idArt);
+            boolean ok = albumDAO.insertar(tituloFinal, 0, gen, fecha, duracion, comp, idArt, archivoPortada);
             SwingUtilities.invokeLater(() -> {
                 if (ok) { mensaje("Álbum \"" + tituloFinal + "\" creado.", true); limpiar(); }
                 else    { mensaje("Error al guardar.", false); }
@@ -155,6 +185,9 @@ public class CrearAlbumPanel extends JPanel {
         txtTitulo.setText(""); txtGenero.setText(""); txtFecha.setText("");
         txtDuracion.setText(""); txtCompositores.setText("");
         if (comboArtista.getItemCount() > 0) comboArtista.setSelectedIndex(0);
+        archivoPortada = null;
+        lblPortada.setText("Sin imagen (opcional)");
+        lblPortada.setForeground(UITheme.MUTED);
         lblMensaje.setText(" ");
     }
 

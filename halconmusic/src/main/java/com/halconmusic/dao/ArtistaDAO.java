@@ -1,14 +1,18 @@
 package com.halconmusic.dao;
 
-import com.halconmusic.db.ConexionDB;
-import com.halconmusic.model.Artista;
-
-import javax.imageio.ImageIO;
 import java.awt.Image;
-import java.io.InputStream;
-import java.sql.*;
+import java.sql.Blob;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.imageio.ImageIO;
+
+import com.halconmusic.db.ConexionDB;
+import com.halconmusic.model.Artista;
 
 public class ArtistaDAO {
 
@@ -24,24 +28,53 @@ public class ArtistaDAO {
      * @return true si se insertó correctamente.
      */
     public boolean insertar(String nombre, String descripcion,
-                            String generoPrincipal, String paisDeOrigen) {
-        // Genera ID secuencial basado en el máximo actual
+                            String generoPrincipal, String paisDeOrigen,
+                            java.io.File archivoPortada) {
         String idNuevo = generarNuevoId();
-        String sql = """
-            INSERT INTO ARTISTAS (ID_ARTISTA, NOMBRE, DESCRIPCION, GENEROPRINCIPAL, PAISDEORIGEN)
-            VALUES (?, ?, ?, ?, ?)
-            """;
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, idNuevo);
-            ps.setString(2, nombre.trim());
-            ps.setString(3, descripcion.trim());
-            ps.setString(4, generoPrincipal.trim());
-            ps.setString(5, paisDeOrigen.trim());
-            ps.executeUpdate();
+        try {
+            con.setAutoCommit(false);
+
+            // Paso 1: INSERT con EMPTY_BLOB()
+            String sql = """
+                INSERT INTO ARTISTAS (ID_ARTISTA, NOMBRE, PORTADA, DESCRIPCION, GENEROPRINCIPAL, PAISDEORIGEN)
+                VALUES (?, ?, EMPTY_BLOB(), ?, ?, ?)
+                """;
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setString(1, idNuevo);
+                ps.setString(2, nombre.trim());
+                ps.setString(3, descripcion.trim());
+                ps.setString(4, generoPrincipal.trim());
+                ps.setString(5, paisDeOrigen.trim());
+                ps.executeUpdate();
+            }
+
+            // Paso 2: escribir BLOB portada si se proporcionó
+            if (archivoPortada != null) {
+                String sqlBlob = "SELECT PORTADA FROM ARTISTAS WHERE ID_ARTISTA = ? FOR UPDATE";
+                try (PreparedStatement ps = con.prepareStatement(sqlBlob)) {
+                    ps.setString(1, idNuevo);
+                    try (java.sql.ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            oracle.sql.BLOB blob = (oracle.sql.BLOB) rs.getBlob("PORTADA");
+                            java.io.OutputStream os = blob.getBinaryOutputStream();
+                            java.io.FileInputStream fis = new java.io.FileInputStream(archivoPortada);
+                            byte[] buf = new byte[blob.getBufferSize()];
+                            int n;
+                            while ((n = fis.read(buf)) != -1) os.write(buf, 0, n);
+                            os.close();
+                            fis.close();
+                        }
+                    }
+                }
+            }
+
+            con.commit();
+            con.setAutoCommit(true);
             System.out.println("✅ Artista creado: " + idNuevo);
             return true;
-        } catch (SQLException e) {
+        } catch (Exception e) {
             System.err.println("Error al insertar artista: " + e.getMessage());
+            try { con.rollback(); con.setAutoCommit(true); } catch (Exception ignored) {}
             return false;
         }
     }

@@ -38,6 +38,13 @@ public class CancionDAO {
                             java.io.File archivoVideo) {  // ← nuevo (opcional)
 
         String idNuevo = generarNuevoId();
+        
+        try {
+            con.setAutoCommit(false);   // ← AQUÍ, antes de todo
+        } catch (SQLException e) {
+            System.err.println("Error setAutoCommit: " + e.getMessage());
+            return false;
+        }
 
         // Paso 1: INSERT con EMPTY_BLOB() igual que antes
         String sqlCan = """
@@ -46,6 +53,7 @@ public class CancionDAO {
                EMOCION, DURACION_SEG, FECHA, FT, LETRA)
             VALUES (?, ?, ?, ?, EMPTY_BLOB(), EMPTY_BLOB(), EMPTY_BLOB(), ?, ?, ?, ?, ?)
             """;
+
         try (PreparedStatement ps = con.prepareStatement(sqlCan)) {
             ps.setString(1, idNuevo);
             ps.setString(2, nombre.trim());
@@ -59,13 +67,13 @@ public class CancionDAO {
             ps.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Error al insertar canción: " + e.getMessage());
+            try { con.rollback(); con.setAutoCommit(true); } catch (Exception ignored) {}
             return false;
         }
 
         // Paso 2: escribir PORTADA via locator
         String sqlBlob = "SELECT PORTADA, MUSICA, VIDEO FROM CANCIONES WHERE ID_CANCION = ? FOR UPDATE";
         try (PreparedStatement ps = con.prepareStatement(sqlBlob)) {
-            con.setAutoCommit(false);
             ps.setString(1, idNuevo);
             try (java.sql.ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {

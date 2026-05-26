@@ -1,6 +1,5 @@
 package com.halconmusic.ui.panels;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -16,7 +15,6 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
@@ -26,7 +24,8 @@ import com.halconmusic.ui.UITheme;
 public class CrearArtistaPanel extends JPanel {
 
     private final ArtistaDAO artistaDAO = new ArtistaDAO();
-
+    private java.io.File archivoPortada;
+    private JLabel       lblPortada;
     private JTextField txtNombre;
     private JTextField txtDescripcion;
     private JTextField txtGenero;
@@ -56,6 +55,38 @@ public class CrearArtistaPanel extends JPanel {
         txtDescripcion = campo("Descripción breve");
         txtGenero      = campo("Género principal (ej: Corridos, Pop)");
         txtPais        = campo("País de origen");
+    
+        // Botón selector de portada
+        JButton btnPortada = new JButton("Seleccionar imagen...");
+        btnPortada.setBackground(UITheme.CARD);
+        btnPortada.setForeground(UITheme.TEXT);
+        btnPortada.setFont(UITheme.FONT_BODY);
+        btnPortada.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UITheme.BORDER, 1, true),
+            BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+        btnPortada.setFocusPainted(false);
+        btnPortada.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnPortada.addActionListener(e -> {
+            javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes (JPG, PNG)", "jpg", "jpeg", "png"));
+            if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                archivoPortada = fc.getSelectedFile();
+                lblPortada.setText(archivoPortada.getName());
+                lblPortada.setForeground(new Color(0x4CAF50));
+            }
+        });
+
+        lblPortada = new JLabel("Sin imagen (opcional)");
+        lblPortada.setFont(UITheme.FONT_SMALL);
+        lblPortada.setForeground(UITheme.MUTED);
+        lblPortada.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel rowPortada = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        rowPortada.setOpaque(false);
+        rowPortada.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rowPortada.add(btnPortada);
+        rowPortada.add(lblPortada);
 
         lblMensaje = new JLabel(" ");
         lblMensaje.setFont(UITheme.FONT_SMALL);
@@ -83,6 +114,9 @@ public class CrearArtistaPanel extends JPanel {
         card.add(txtGenero);                       card.add(Box.createVerticalStrut(12));
         card.add(etiqueta("País de origen *"));    card.add(Box.createVerticalStrut(4));
         card.add(txtPais);                         card.add(Box.createVerticalStrut(16));
+        card.add(etiqueta("Portada (opcional)"));  card.add(Box.createVerticalStrut(4));
+        card.add(rowPortada);                       card.add(Box.createVerticalStrut(12));
+        card.add(lblMensaje);
         card.add(lblMensaje);                      card.add(Box.createVerticalStrut(8));
         card.add(botones);
 
@@ -101,7 +135,7 @@ public class CrearArtistaPanel extends JPanel {
         }
 
         new Thread(() -> {
-            boolean ok = artistaDAO.insertar(nombre, desc, genero, pais);
+            boolean ok = artistaDAO.insertar(nombre, desc, genero, pais, archivoPortada);
             SwingUtilities.invokeLater(() -> {
                 if (ok) { mensaje("Artista \"" + nombre + "\" creado correctamente.", true); limpiar(); }
                 else    { mensaje("Error al guardar. Revisa los datos.", false); }
@@ -112,6 +146,9 @@ public class CrearArtistaPanel extends JPanel {
     private void limpiar() {
         txtNombre.setText(""); txtDescripcion.setText("");
         txtGenero.setText(""); txtPais.setText("");
+        archivoPortada = null;
+        lblPortada.setText("Sin imagen (opcional)");
+        lblPortada.setForeground(UITheme.MUTED);
         lblMensaje.setText(" ");
     }
 
