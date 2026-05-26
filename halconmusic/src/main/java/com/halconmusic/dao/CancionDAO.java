@@ -387,8 +387,12 @@ public class CancionDAO {
         }
         return lista;
     }
-    public void crearPlaylist(String idUsuario, String nombre, String descripcion, List<String> idCanciones) {
+
+    public void crearPlaylist(String idUsuario, String nombre, String descripcion,
+                              List<String> idCanciones, byte[] portadaBytes) {
         try {
+            con.setAutoCommit(false);
+
             // Generar nuevo ID
             String nuevoId;
             try (PreparedStatement ps = con.prepareStatement(
@@ -407,6 +411,26 @@ public class CancionDAO {
                 ps.setString(4, descripcion);
                 ps.setInt(5, idCanciones.size());
                 ps.executeUpdate();
+            }
+
+            // Escribir BLOB de portada usando el mismo patrón que CancionDAO
+            if (portadaBytes != null && portadaBytes.length > 0) {
+                String sqlBlob = "SELECT PORTADA FROM PLAYLISTS WHERE ID_PLAYLIST = ? FOR UPDATE";
+                try (PreparedStatement ps = con.prepareStatement(sqlBlob)) {
+                    ps.setString(1, nuevoId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            oracle.sql.BLOB blob = (oracle.sql.BLOB) rs.getBlob("PORTADA");
+                            java.io.OutputStream os = blob.getBinaryOutputStream();
+                            java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(portadaBytes);
+                            byte[] buf = new byte[blob.getBufferSize()];
+                            int n;
+                            while ((n = bis.read(buf)) != -1) os.write(buf, 0, n);
+                            os.close();
+                            bis.close();
+                        }
+                    }
+                }
             }
 
             // Insertar en USUARIOS_PLAYLISTS
@@ -429,10 +453,12 @@ public class CancionDAO {
             }
 
             con.commit();
+            con.setAutoCommit(true);
             System.out.println("✅ Playlist creada: " + nuevoId);
-        } catch (SQLException e) {
+
+        } catch (Exception e) {
             System.err.println("Error en crearPlaylist: " + e.getMessage());
-            try { con.rollback(); } catch (SQLException ignored) {}
+            try { con.rollback(); con.setAutoCommit(true); } catch (Exception ignored) {}
         }
-    }  
+    }
 }

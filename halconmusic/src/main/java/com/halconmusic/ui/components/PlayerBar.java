@@ -305,6 +305,19 @@ public class PlayerBar extends JPanel {
         return p;
     }
 
+    public void detener() {
+        AudioService.getInstance().detener();
+        cancionActual = null;
+        isPlaying     = false;
+        progSeg       = 0;
+        lblTitle.setText("Sin reproducción");
+        lblArtist.setText("");
+        btnLetra.setEnabled(false);
+        btnVideo.setEnabled(false);
+        if (thumbPanel != null) thumbPanel.repaint();
+        repaint();
+    }
+
     // ── API pública ───────────────────────────────────────
     public void reproducir(Cancion c) {
         cancionActual = c;

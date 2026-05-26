@@ -30,6 +30,7 @@ import com.halconmusic.ui.panels.CrearPlaylistPanel;
 import com.halconmusic.ui.panels.HomePanel;
 import com.halconmusic.ui.panels.LoginPanel;
 import com.halconmusic.ui.panels.MeGustasPanel;
+import com.halconmusic.ui.panels.PlaylistPanel;
 import com.halconmusic.ui.panels.ResumenGlobalPanel;
 import com.halconmusic.ui.panels.ResumenPanel;
 
@@ -37,6 +38,8 @@ public class App extends JFrame {
 
     private CardLayout rootLayout;
     private JPanel     rootPanel;
+
+    private PlaylistPanel playlistPanel;
 
     private String idUsuario;
     private String nombreUsuario;
@@ -109,7 +112,7 @@ public class App extends JFrame {
         // Sidebar recibe tipoRaw para mostrar/ocultar sección Artista
         ResumenDAO resumenDAO = new ResumenDAO();
         List<String[]> playlists = resumenDAO.obtenerPlaylistsDeUsuario(idUsuario);
-        sidebar = new Sidebar(this::navegar, nombreUsuario, tipoDisplay, tipoRaw, playlists);
+        sidebar = new Sidebar(this::navegar, this::cerrarSesion, nombreUsuario, tipoDisplay, tipoRaw, playlists);
 
         cardLayout  = new CardLayout();
         contentArea = new JPanel(cardLayout);
@@ -127,6 +130,9 @@ public class App extends JFrame {
         contentArea.add(new ArtistasPanel(), "artistas");
         contentArea.add(new AlbumesPanel(this::reproducir, this::agregarMeGusta, idUsuario), "albumes");
         contentArea.add(new CancionesPanel(this::reproducir, this::agregarMeGusta, idUsuario), "canciones");
+
+        playlistPanel = new PlaylistPanel(this::reproducir, this::agregarMeGusta, idUsuario);
+        contentArea.add(playlistPanel, "playlist");
 
         // Panel de resumen global (req. 10) — solo artistas lo ven
         contentArea.add(wrapScroll(new ResumenGlobalPanel()), "resumenGlobal");
@@ -153,13 +159,45 @@ public class App extends JFrame {
 
     private void navegar(String vista) {
         if (vista.startsWith("playlist:")) {
-            cardLayout.show(contentArea, "crearPlaylist"); // por ahora navega al panel de crear
+            String idPl = vista.substring("playlist:".length());
+            cargarYMostrarPlaylist(idPl);
             return;
         }
+
         cardLayout.show(contentArea, vista);
         if ("historial".equals(vista))     resumenPanel.refrescar();
         if ("megustas".equals(vista))      meGustasPanel.refrescar();
         if ("resumenGlobal".equals(vista)) { /* ResumenGlobalPanel carga en su constructor */ }
+    }
+
+    private void cargarYMostrarPlaylist(String idPlaylist) {
+        new Thread(() -> {
+            com.halconmusic.dao.ResumenDAO dao = new com.halconmusic.dao.ResumenDAO();
+            // Obtener datos de la playlist
+            String sql = "SELECT NOMBRE, DESCRIPCION, PORTADA FROM PLAYLISTS WHERE ID_PLAYLIST = ?";
+            try (java.sql.PreparedStatement ps =
+                    com.halconmusic.db.ConexionDB.getInstance().getConexion().prepareStatement(sql)) {
+                ps.setString(1, idPlaylist);
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        String nombre = rs.getString("NOMBRE");
+                        String desc   = rs.getString("DESCRIPCION");
+                        java.awt.Image portada = null;
+                        java.sql.Blob blob = rs.getBlob("PORTADA");
+                        if (blob != null && blob.length() > 0) {
+                            portada = javax.imageio.ImageIO.read(blob.getBinaryStream());
+                        }
+                        final java.awt.Image portadaFinal = portada;
+                        SwingUtilities.invokeLater(() -> {
+                            playlistPanel.cargar(idPlaylist, nombre, desc, portadaFinal);
+                            cardLayout.show(contentArea, "playlist");
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error cargando playlist: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void refrescarSidebar() {
@@ -168,7 +206,7 @@ public class App extends JFrame {
         java.util.List<String[]> playlists = dao.obtenerPlaylistsDeUsuario(idUsuario);
         // Reconstruir sidebar con nuevas playlists
         JSplitPane split = (JSplitPane) ((JPanel) rootPanel.getComponent(1)).getComponent(0);
-        split.setLeftComponent(new Sidebar(this::navegar, nombreUsuario, tipoDisplay, tipoRaw, playlists));
+        split.setLeftComponent(new Sidebar(this::navegar, this::cerrarSesion, nombreUsuario, tipoDisplay, tipoRaw, playlists));
         split.revalidate();
     }
 
@@ -203,5 +241,31 @@ public class App extends JFrame {
         SwingUtilities.invokeLater(App::new);
         Runtime.getRuntime().addShutdownHook(
             new Thread(() -> ConexionDB.getInstance().cerrar()));
+    }
+
+    private void cerrarSesion() {
+        // Detener reproducción
+        if (playerBar != null) playerBar.detener();
+
+        // Limpiar estado del usuario
+        idUsuario     = null;
+        nombreUsuario = null;
+        tipoDisplay   = null;
+        tipoRaw       = null;
+
+        // Eliminar panel "app" del rootPanel para que se construya limpio en el próximo login
+        for (int i = 0; i < rootPanel.getComponentCount(); i++) {
+            java.awt.Component c = rootPanel.getComponent(i);
+            // El panel "app" no es el LoginPanel
+            if (!(c instanceof LoginPanel)) {
+                rootPanel.remove(c);
+                break;
+            }
+        }
+
+        // Volver al login
+        rootLayout.show(rootPanel, "login");
+        rootPanel.revalidate();
+        rootPanel.repaint();
     }
 }

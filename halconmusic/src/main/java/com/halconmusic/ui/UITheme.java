@@ -30,7 +30,7 @@ public final class UITheme {
     public static final Font FONT_NUM     = new Font("Segoe UI", Font.BOLD,   22);
 
     // ── Dimensiones ──────────────────────────────────────
-    public static final int SIDEBAR_W = 220;
+    public static final int SIDEBAR_W = 200;
     public static final int PLAYER_H  = 80;
     public static final int CARD_SIZE = 150;
     public static final int RADIUS    = 10;

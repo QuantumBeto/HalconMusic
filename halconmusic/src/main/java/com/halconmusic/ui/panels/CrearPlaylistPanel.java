@@ -9,14 +9,21 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Image;
 import java.awt.Insets;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -25,6 +32,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.halconmusic.dao.CancionDAO;
 import com.halconmusic.model.Cancion;
@@ -35,7 +43,9 @@ public class CrearPlaylistPanel extends JPanel {
     private final String     idUsuario;
     private final CancionDAO cancionDAO = new CancionDAO();
     private final Runnable   onCreada;   // callback para refrescar sidebar
-
+    private byte[]  portadaBytes = null;
+    private JLabel  lblPortadaPreview;
+    
     private JTextField        txtNombre;
     private JTextField        txtDescripcion;
     private DefaultListModel<Cancion> modeloDisponibles = new DefaultListModel<>();
@@ -91,8 +101,29 @@ public class CrearPlaylistPanel extends JPanel {
         txtDescripcion.setCaretColor(UITheme.ACCENT);
         centro.add(txtDescripcion, gbc);
 
+        // DESPUÉS de la fila de descripción (gridy=1), agrega:
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        JLabel lblPortada = new JLabel("Portada:");
+        lblPortada.setForeground(UITheme.TEXT);
+        centro.add(lblPortada, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        JPanel panelPortada = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        panelPortada.setOpaque(false);
+        JButton btnPortada = new JButton("Seleccionar imagen...");
+        estilizarBtn(btnPortada);
+        lblPortadaPreview = new JLabel("Sin imagen");
+        lblPortadaPreview.setForeground(UITheme.MUTED);
+        lblPortadaPreview.setFont(UITheme.FONT_SMALL);
+        btnPortada.addActionListener(e -> seleccionarPortada());
+        panelPortada.add(btnPortada);
+        panelPortada.add(lblPortadaPreview);
+        centro.add(panelPortada, gbc);
+
         // Listas de canciones
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.BOTH; gbc.weighty = 1;
         centro.add(buildPanelListas(), gbc);
 
@@ -111,6 +142,26 @@ public class CrearPlaylistPanel extends JPanel {
         sur.setOpaque(false);
         sur.add(btnCrear);
         add(sur, BorderLayout.SOUTH);
+    }
+
+    private void seleccionarPortada() {
+        JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(new FileNameExtensionFilter("Imágenes (JPG, PNG)", "jpg", "jpeg", "png"));
+        if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File f = fc.getSelectedFile();
+            try {
+                portadaBytes = Files.readAllBytes(f.toPath());
+                // Mostrar preview redimensionado
+                BufferedImage img = ImageIO.read(f);
+                if (img != null) {
+                    Image scaled = img.getScaledInstance(32, 32, Image.SCALE_SMOOTH);
+                    lblPortadaPreview.setIcon(new javax.swing.ImageIcon(scaled));
+                    lblPortadaPreview.setText(" " + f.getName());
+                }
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this, "No se pudo leer la imagen.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private JPanel buildPanelListas() {
@@ -233,7 +284,7 @@ public class CrearPlaylistPanel extends JPanel {
             ids.add(modeloSeleccionadas.get(i).getIdCancion());
 
         new Thread(() -> {
-            cancionDAO.crearPlaylist(idUsuario, nombre, desc, ids);
+            cancionDAO.crearPlaylist(idUsuario, nombre, desc, ids, portadaBytes);
             SwingUtilities.invokeLater(() -> {
                 JOptionPane.showMessageDialog(this, "¡Playlist creada exitosamente!", "Listo", JOptionPane.INFORMATION_MESSAGE);
                 txtNombre.setText("");

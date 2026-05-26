@@ -18,6 +18,7 @@ import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
@@ -27,44 +28,51 @@ import com.halconmusic.ui.UITheme;
 public class Sidebar extends JPanel {
 
     private final Consumer<String> onNavigate;
+    private final Runnable         onCerrarSesion;
     private       String           currentView = "home";
     private final String           tipoRaw;
 
-    public Sidebar(Consumer<String> onNavigate, String usuarioNombre,
-               String usuarioTipo, String tipoRaw, List<String[]> playlists) {
+    public Sidebar(Consumer<String> onNavigate, Runnable onCerrarSesion,
+                    String usuarioNombre, String usuarioTipo,
+                    String tipoRaw, List<String[]> playlists) {
+
         this.onNavigate = onNavigate;
         this.tipoRaw    = tipoRaw;
+        this.onCerrarSesion = onCerrarSesion;
 
         setPreferredSize(new Dimension(UITheme.SIDEBAR_W, 0));
         setBackground(UITheme.SIDEBAR);
         setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, UITheme.BORDER));
         setLayout(new BorderLayout());
 
-        JPanel top = new JPanel();
-        top.setOpaque(false);
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        top.add(buildLogo());
-        top.add(buildNavSection());
-        top.add(buildDivider());
-        top.add(buildLibrarySection());
+        JPanel contenido = new JPanel();
+        contenido.setOpaque(false);
+        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
+        contenido.add(buildLogo());
+        contenido.add(buildNavSection());
+        contenido.add(buildDivider());
+        contenido.add(buildLibrarySection());
 
         if ("Premium".equalsIgnoreCase(tipoRaw)) {
-            top.add(buildDivider());
-            top.add(buildArtistSection());
+            contenido.add(buildDivider());
+            contenido.add(buildArtistSection());
         }
 
-        top.add(buildDivider());
-        top.add(buildPlaylistLabel());
+        contenido.add(buildDivider());
+        contenido.add(buildPlaylistLabel());
+        contenido.add(buildPlaylistPanel(playlists));
 
-        JScrollPane scrollPlaylists = new JScrollPane(buildPlaylistPanel(playlists));
-        scrollPlaylists.setBorder(null);
-        scrollPlaylists.setOpaque(false);
-        scrollPlaylists.getViewport().setOpaque(false);
-        scrollPlaylists.getVerticalScrollBar().setPreferredSize(new Dimension(4, 0));
+        JScrollPane scroll = new JScrollPane(contenido);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setPreferredSize(new Dimension(4, 0));
+        scroll.getVerticalScrollBar().setUnitIncrement(12);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setPreferredSize(new Dimension(UITheme.SIDEBAR_W, 0));
 
-        add(top,             BorderLayout.NORTH);
-        add(scrollPlaylists, BorderLayout.CENTER);
-        add(buildUserBadge(usuarioNombre, usuarioTipo), BorderLayout.SOUTH);
+        add(scroll,                                      BorderLayout.CENTER);
+        add(buildUserBadge(usuarioNombre, usuarioTipo),  BorderLayout.SOUTH);
     }
 
     private JPanel buildArtistSection() {
@@ -195,7 +203,7 @@ public class Sidebar extends JPanel {
         avatar.setOpaque(false);
         avatar.setPreferredSize(new Dimension(28, 28));
 
-        JPanel info = new JPanel(new GridLayout(2, 1, 0, 0));
+        JPanel info = new JPanel(new GridLayout(3, 1, 0, 2));
         info.setOpaque(false);
         JLabel lblNombre = new JLabel(nombre);
         lblNombre.setFont(UITheme.FONT_SMALL);
@@ -203,16 +211,32 @@ public class Sidebar extends JPanel {
         JLabel lblTipo = new JLabel(tipo);
         lblTipo.setFont(UITheme.FONT_LABEL);
         lblTipo.setForeground(UITheme.ACCENT);
+        JLabel btnCerrar = new JLabel("Cerrar sesión");
+        btnCerrar.setFont(UITheme.FONT_LABEL);
+        btnCerrar.setForeground(UITheme.MUTED);
+        btnCerrar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnCerrar.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btnCerrar.setForeground(UITheme.ACCENT); }
+            @Override public void mouseExited (MouseEvent e) { btnCerrar.setForeground(UITheme.MUTED);  }
+            @Override public void mouseClicked(MouseEvent e) {
+                int ok = JOptionPane.showConfirmDialog(
+                    null, "¿Cerrar sesión?", "HalconMusic",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+                if (ok == JOptionPane.YES_OPTION) onCerrarSesion.run();
+            }
+        });
+        
         info.add(lblNombre);
         info.add(lblTipo);
-
+        info.add(btnCerrar);
+            
         p.add(avatar);
         p.add(info);
         return p;
     }
 
     private JPanel navItem(String view, String icon, String label) {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 8)) {
+        JPanel p = new JPanel(new BorderLayout(8, 0)) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setColor(getBackground());
@@ -223,12 +247,15 @@ public class Sidebar extends JPanel {
         };
         p.setBackground(UITheme.SIDEBAR);
         p.setOpaque(false);
-        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        p.setMaximumSize(new Dimension(UITheme.SIDEBAR_W, 38));
+        p.setMinimumSize(new Dimension(UITheme.SIDEBAR_W, 38));
+        p.setPreferredSize(new Dimension(UITheme.SIDEBAR_W, 38));
         p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         // Usar fuente "Dialog" (fuente lógica Java que mapea al mejor sistema disponible)
         JLabel iconLbl  = new JLabel(icon);
-        iconLbl.setFont(new Font(Font.DIALOG, Font.PLAIN, 15));
+        iconLbl.setFont(new Font(Font.DIALOG, Font.PLAIN, 13));
+        iconLbl.setPreferredSize(new Dimension(18, 18));
         JLabel labelLbl = new JLabel(label);
         labelLbl.setFont(UITheme.FONT_BODY);
 
@@ -236,8 +263,11 @@ public class Sidebar extends JPanel {
         iconLbl.setForeground(isActive  ? UITheme.ACCENT : UITheme.MUTED);
         labelLbl.setForeground(isActive ? UITheme.ACCENT : UITheme.MUTED);
 
-        p.add(iconLbl);
-        p.add(labelLbl);
+        JPanel izq = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
+        izq.setOpaque(false);
+        izq.add(iconLbl);
+        p.add(izq,     BorderLayout.WEST);
+        p.add(labelLbl, BorderLayout.CENTER);
 
         p.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
